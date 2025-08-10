@@ -1,6 +1,4 @@
 using ChronoSimExamples
 using Test
 
-@testset "ChronoSimExamples.jl" begin
-    # Write your tests here.
-end
+include("test_elevator.jl")
