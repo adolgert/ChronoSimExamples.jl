@@ -7,3 +7,4 @@
 This repository has examples of simulations written with [ChronoSim.jl](https://github.com/adolgert/ChronoSim.jl).
 
  * [Bank of multiple elevators](src/elevator/elevator.jl)
+ * [Reliability of set of trucks](src/reliability/reliability.jl)
