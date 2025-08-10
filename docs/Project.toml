@@ -1,0 +1,3 @@
+[deps]
+ChronoSimExamples = "1bc6675e-297e-45c4-9a4f-4c2ceebb3e92"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
