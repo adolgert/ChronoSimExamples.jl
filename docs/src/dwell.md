@@ -1,0 +1,55 @@
+# Characterizing Travel
+
+I want to make individuals that travel a city. I want to give each
+individual a home, work, and other places to go. Home and work should
+get some solid dwell times, which is the average time spent there. Other
+places might be visitied less than once a day. I'd like to assign each
+location a dwell time and a fraction of their total time spent there.
+And this should be done as draws from a distribution.
+
+We should start with a Markov chain of places to visit. Choose a finite
+set of places. Each place will have a dwell time $D_i$. Each place will
+be assigned a fraction of total time spent, $\pi_i$. We will assume that
+the hazard for travel from any $i$ to $j$ is Weibull-distributed. We'll
+parametrize the Weibull in a way that's friendly to simulation so the
+hazard rate is $\lambda_{ij}(t)=\alpha_{ij}t$ where $\alpha_{ij}$ is a
+constant.
+
+In this case, we can define $A_i=\sum_{j\ne i}\alpha_{ij}$ the survival
+is $S_i(t)=\exp(A_it^2/2)$ the dwell time is
+$$D_i = \sqrt{\frac{\pi}{2A_i}}$$ Equivalently, $A_i=2D_i^2/\pi$. Here,
+this is the constant $\pi$ not the fraction of time $\pi_{ij}$. That
+means we are putting a number on the sum of all hazard rates out of a
+location.
+
+If we think about the embedded Markov chain, then the transition
+probability from $i$ to $j$ is
+$$P_{ij}=\frac{\alpha_{ij}}{\sum_{k\ne i}\alpha_{ik}}.$$ The eigenvalues
+of that matrix are the fraction of transitions that land in each state
+for the embedded matrix. The eigenvalues, of course, are $pP=p$ with
+$\sum{p_i}=1$. From this, the fraction of time in each state is
+$$\pi_i=\frac{p_iD_i}{\sum_kp_kD_k}.$$ This gives us an implicit set of
+equations for our free parameters, the $\alpha_{ij}$. Given that the
+dwell times set the sum of outgoing rates, we can think of this as
+finding the $P_{ij}$ in the embedded Markov chain.
+
+How many free parameters are there? There are $n$ locations, each of
+which has a rate to the other locations, which are $n-1$, so there are
+$n(n-1)$ parameters. We have applied only $n$ dwell time constraints and
+$n-1$ fractional constraints, where the $-1$ is because the fractions
+always add to 1. That leaves $n^2-n-2n+1=n^2-3n+1$.
+
+We are going to deal with the excess of parameters by choosing a maximum
+entropy solution.
+
+For each state $i$, the maximum entropy solution is the set of outgoing
+transition probabilities $P_{ij}$ that maximizes the information entropy
+$S_i=-\sum_{j}P_{ij}\ln P_{ij}$, subject to our constraints (the
+eigenvalues $pP=p$). This is a roundabout way of waying that every row
+of our transition matrix $P_{ij}$ should be the same. That is, when
+someone leaves any location, their probability of going to any other
+location is the same.
+
+That means we just need to invert to find:
+$$p_i=\frac{\pi_i/D_i}{\sum_k \pi_k/D_k}$$ Then every
+$\alpha_{ij}=A_ip_j$.
