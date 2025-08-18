@@ -168,9 +168,9 @@ function fire!(evt::Travel, physical, when, rng)
     probs = physical.actor_params[evt.who].exit_frac
     mask = trues(length(probs))
     mask[source_haunt] = false
-    probs /= sum(probs[mask])
-    probs[source_haunt] = 0.0
-    dest_haunt = rand(rng, Categorical(probs))
+    probs_norm = probs / sum(probs[mask])
+    probs_norm[source_haunt] = 0.0
+    dest_haunt = rand(rng, Categorical(probs_norm))
     dest_loc = physical.actor_params[evt.who].haunts[dest_haunt]
     physical.locations[source_loc].individual_cnt -= 1
     filter!(w -> w != evt.who, physical.locations[source_loc].individuals)
@@ -218,7 +218,7 @@ end
 function enable(evt::Infect, physical, when)
     strain_idx = physical.actors[evt.source].strain
     infectivity = physical.strains[strain_idx].infectivity
-    robust = physical.actors[evt.sink].robustness
+    robust = physical.actor_params[evt.sink].robustness
     # Julia exponential uses a scale parameter.
     return (Exponential(inv(infectivity / robust)), when)
 end
@@ -243,11 +243,11 @@ precondition(evt::Recover, physical) = physical.actors[evt.who].state == Infecti
 end
 
 function enable(evt::Recover, physical, when)
-    strain_idx = physical.actors[evt.source].strain
+    strain_idx = physical.actors[evt.who].strain
     virulence = physical.strains[strain_idx].virulence
-    robust = physical.actors[evt.sink].robustness
+    robust = physical.actors[evt.who].robustness
     # The more virulent, the longer the recovery.
-    return (Gamma(inv(robust / virulence)), when)
+    return (Gamma(3, inv(robust / virulence)), when)
 end
 
 function fire!(evt::Recover, physical, when, rng)
@@ -334,7 +334,7 @@ function init_physical!(physical, when, rng)
 
     # Creates a few strains to start.
     for sidx in 2:min(infect_cnt, 5)
-        fire!(Mutate(pidx), physical, when, rng)
+        fire!(Mutate(sidx), physical, when, rng)
     end
 end
 
