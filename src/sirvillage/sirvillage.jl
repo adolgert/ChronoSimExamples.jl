@@ -98,7 +98,7 @@ function movement_model(location_cnt, individual_location_cnt, day_length, rng)
     end
     fractions = rand(rng, individual_location_cnt)
     fractions /= sum(fractions)
-    exit_sum = @. (2 / π) * dwells^2
+    exit_sum = @. (π / (2 * dwells^2))
     boosted_frac = fractions ./ dwells
     exit_frac = boosted_frac / sum(boosted_frac)
     locations = sample(rng, 1:location_cnt, individual_location_cnt; replace=false)
@@ -397,7 +397,7 @@ function run_sirvillage()
     person_cnt = 1
     location_cnt = 10
     day_length = 1.0
-    days = 10000.0 * day_length
+    days = 10.0 * day_length
     Sampler = CombinedNextReaction{Tuple,Float64}
     rng = Xoshiro(2938423)
     physical = Village(person_cnt, location_cnt, day_length, rng)
