@@ -1,11 +1,14 @@
 module SIRVillage
+
+using CompetingClocks
+using Distributions
+using Logging
+using PDMats
+using Random
+
 using ChronoSim
 using ChronoSim.ObservedState
-using CompetingClocks
 import ChronoSim: generators, precondition, enable, reenable, fire!
-using Distributions
-using Random
-using PDMats
 
 export run_sirvillage
 
@@ -199,6 +202,20 @@ function precondition(evt::Infect, physical)
 end
 
 @conditionsfor Infect begin
+    @reactto changed(actors[who].haunt) do physical
+        loc_idx = physical.actor_params[who].haunts[physical.actors[who].haunt]
+        # Just became infectious, so infect everybody at your location.
+        if physical.actors[who].state == Infectious
+            for sink in physical.locations[loc_idx].individuals
+                generate(Infect(who, sink))
+            end
+        # Just became susceptible, so anybody can infect you.
+        elseif physical.actors[who].state == Susceptible
+            for source in physical.locations[loc_idx].individuals
+                generate(Infect(source, who))
+            end
+        end
+    end
     @reactto changed(actors[who].state) do physical
         loc_idx = physical.actor_params[who].haunts[physical.actors[who].haunt]
         # Just became infectious, so infect everybody at your location.
@@ -245,7 +262,7 @@ end
 function enable(evt::Recover, physical, when)
     strain_idx = physical.actors[evt.who].strain
     virulence = physical.strains[strain_idx].virulence
-    robust = physical.actors[evt.who].robustness
+    robust = physical.actor_params[evt.who].robustness
     # The more virulent, the longer the recovery.
     return (Gamma(3, inv(robust / virulence)), when)
 end
@@ -336,6 +353,7 @@ function init_physical!(physical, when, rng)
     for sidx in 2:min(infect_cnt, 5)
         fire!(Mutate(sidx), physical, when, rng)
     end
+    @info "Infected $infect_cnt with $(length(physical.strains)) strains."
 end
 
 function validate_invariants(physical)
@@ -394,10 +412,10 @@ function (te::TrajectorySave)(physical, when, event, changed_places)
 end
 
 function run_sirvillage()
-    person_cnt = 1
+    person_cnt = 10
     location_cnt = 10
     day_length = 1.0
-    days = 10.0 * day_length
+    days = 1.0 * day_length
     Sampler = CombinedNextReaction{Tuple,Float64}
     rng = Xoshiro(2938423)
     physical = Village(person_cnt, location_cnt, day_length, rng)
