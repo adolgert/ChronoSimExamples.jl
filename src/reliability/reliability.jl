@@ -185,10 +185,10 @@ function run_reliability(days)
     trajectory = TrajectorySave()
     sim = SimulationFSM(
         physical,
-        Sampler(),
         included_transitions;
         rng=Xoshiro(2947223),
-        observer=trajectory
+        observer=trajectory,
+        sampler=Sampler()
     )
     initializer = function(init_physical, when, rng)
         initialize!(init_physical, rng)
@@ -202,4 +202,9 @@ function run_reliability(days)
     return sim.when
 end
 
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    using .ReliabilitySim
+    run_reliability(5.0)
 end

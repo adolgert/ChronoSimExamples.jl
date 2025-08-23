@@ -12,7 +12,7 @@ using Random
 # The rate of spread from one point to the next depends on the distance.
 # You start it somewhere and observe it later.
 
-export run_landspread
+export run_landspread, landspread_likelihood
 
 # We won't use the ChronoSim.@observedphysical macro for this simulation.
 # Instead, every time we read from or write to the state, we'll note it to
@@ -68,26 +68,65 @@ function init_physical!(land, when, rng)
     @observe land.mark[1] = 1
 end
 
+struct TrajectoryEntry
+    event::Tuple
+    when::Float64
+end
+
+astuple(te::TrajectoryEntry, event_dict) = (te.when, ChronoSim.key_clock(te.event, event_dict))
+
+mutable struct TrajectorySave
+    trajectory::Vector{TrajectoryEntry}
+    sim::SimulationFSM
+    TrajectorySave() = new(Vector{TrajectoryEntry}())
+end
+
+function (te::TrajectorySave)(physical, when, event, changed_places)
+    @info "Firing $event at $when"
+    push!(te.trajectory, TrajectoryEntry(clock_key(event), when))
+end
+
 function run_landspread(point_cnt)
     rng = Xoshiro(9437294723)
     land = Landscape(point_cnt, rng)
+    trajectory = TrajectorySave()
     sim = SimulationFSM(
         land,
-        CombinedNextReaction{Tuple,Float64}(),
         [Spread];
-        rng = rng
+        rng = rng,
+        observer = trajectory,
         )
     stop_condition = function(land, step, event, when)
         return false
     end
     ChronoSim.run(sim, init_physical!, stop_condition)
+    return trajectory.trajectory
 end
 
 
+function landspread_likelihood(point_cnt)
+    trajectory_vector = run_landspread(point_cnt)
+    event_dict = Dict(:Spread => Spread, :InitializeEvent => ChronoSim.InitializeEvent)
+    event_vector = [astuple(te, event_dict) for te in trajectory_vector]
+    @assert isa(event_vector[1][2], ChronoSim.InitializeEvent)
+    popfirst!(event_vector)  # Get rid of the InitializeEvent.
+    rng = Xoshiro(9437294723)
+    land = Landscape(point_cnt, rng)
+    sampler = CompetingClocks.MemorySampler(CombinedNextReaction{Tuple,Float64}())
+    sim = SimulationFSM(
+        land,
+        [Spread];
+        sampler = sampler,
+        rng = rng
+        )
+    how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector)
+    println("logpdf $how_likely")
+end
 end  # module LandSpread
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
     using .LandSpread
     run_landspread(10)
+    landspread_likelihood(10)
 end

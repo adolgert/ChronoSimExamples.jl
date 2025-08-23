@@ -332,8 +332,9 @@ function fire!(evt::Mutate, physical, when, rng)
     physical.actors[evt.carrier].strain = length(physical.strains)
 end
 
+struct InitEvent <: SimEvent end
 
-function init_physical!(physical, when, rng)
+function fire!(evt::InitEvent, physical, when, rng)
     for pidx in eachindex(physical.actors)
         haunt_idx = rand(rng, 1:length(physical.actor_params[pidx].haunts))
         physical.actors[pidx].haunt = haunt_idx
@@ -416,10 +417,10 @@ function run_sirvillage()
     location_cnt = 10
     day_length = 1.0
     days = 1.0 * day_length
-    Sampler = CombinedNextReaction{Tuple,Float64}
     rng = Xoshiro(2938423)
     physical = Village(person_cnt, location_cnt, day_length, rng)
     included_transitions = [
+        InitEvent,
         Travel,
         Infect,
         Recover,
@@ -428,7 +429,7 @@ function run_sirvillage()
     ]
     trajectory = TrajectorySave()
     sim = SimulationFSM(
-        physical, Sampler(), included_transitions; rng=rng, observer=trajectory
+        physical, included_transitions; rng=rng, observer=trajectory
     )
     trajectory.sim = sim
     # Stop-condition is called after the next event is chosen but before the
@@ -436,7 +437,7 @@ function run_sirvillage()
     stop_condition = function (physical, step_idx, event, when)
         return when > days
     end
-    ChronoSim.run(sim, init_physical!, stop_condition)
+    ChronoSim.run(sim, InitEvent(), stop_condition)
     println("Simulation ended at $(sim.when) minutes.")
     return sim.when
 end
