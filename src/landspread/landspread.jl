@@ -73,7 +73,7 @@ struct TrajectoryEntry
     when::Float64
 end
 
-astuple(te::TrajectoryEntry, event_dict) = (te.when, ChronoSim.key_clock(te.event, event_dict))
+astuple(te::TrajectoryEntry, event_dict) = (te.when, te.event)
 
 mutable struct TrajectorySave
     trajectory::Vector{TrajectoryEntry}
@@ -108,7 +108,7 @@ function landspread_likelihood(point_cnt)
     trajectory_vector = run_landspread(point_cnt)
     event_dict = Dict(:Spread => Spread, :InitializeEvent => ChronoSim.InitializeEvent)
     event_vector = [astuple(te, event_dict) for te in trajectory_vector]
-    @assert isa(event_vector[1][2], ChronoSim.InitializeEvent)
+    @assert event_vector[1][2][1] == :InitializeEvent
     popfirst!(event_vector)  # Get rid of the InitializeEvent.
     rng = Xoshiro(9437294723)
     land = Landscape(point_cnt, rng)
