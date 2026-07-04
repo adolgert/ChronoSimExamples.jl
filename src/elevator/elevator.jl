@@ -44,26 +44,26 @@ end
 
 
 @observedphysical ElevatorSystem begin
-    person::ObservedVector{Person}
+    person::ObservedVector{Person,Member}
     # Floor and direction, true is up, false is down.
-    calls::ObservedDict{Tuple{Int64,ElevatorDirection},ElevatorCall}
-    elevator::ObservedVector{Elevator}
+    calls::ObservedDict{Tuple{Int64,ElevatorDirection},ElevatorCall,Member}
+    elevator::ObservedVector{Elevator,Member}
     floor_cnt::Int64
 end
 
 
 function ElevatorSystem(person_cnt::Int64, elevator_cnt::Int64, floor_cnt::Int64)
-    persons = ObservedArray{Person}(undef, person_cnt)
+    persons = ObservedArray{Person,Member}(undef, person_cnt)
     for pidx in eachindex(persons)
         persons[pidx] = Person(1, 1, 0, false)
     end
-    calls = ObservedDict{Tuple{Int64,ElevatorDirection},ElevatorCall}()
+    calls = ObservedDict{Tuple{Int64,ElevatorDirection},ElevatorCall,Member}()
     for flooridx in 1:floor_cnt
         for direction in [Up, Down]
             calls[(flooridx, direction)] = ElevatorCall(false)
         end
     end
-    elevators = ObservedArray{Elevator}(undef, elevator_cnt)
+    elevators = ObservedArray{Elevator,Member}(undef, elevator_cnt)
     for elevidx in eachindex(elevators)
         elevators[elevidx] = Elevator(1, Stationary, false, Set{Int64}())
     end
@@ -285,7 +285,13 @@ end
 
 function precondition(evt::CallElevator, system)
     person = system.person[evt.person]
-    return person.location != person.destination && !person.waiting
+    # The location != 0 guard makes the precondition self-contained rather than
+    # relying on the narrowness of the destination-only trigger to avoid the
+    # in-elevator state, where fire! would crash on calls[(0, dir)]. Found by
+    # deriving generators from this precondition. In reachable states under the
+    # trigger above the guard never changes the outcome, so trajectories are
+    # unaffected.
+    return person.location != 0 && person.location != person.destination && !person.waiting
 end
 
 enable(evt::CallElevator, system, when) = (Exponential(1.0), when)
@@ -318,6 +324,14 @@ end
         generate(OpenElevatorDoors(elidx))
     end
     @reactto changed(elevator[elidx].buttons_pressed) do system
+        generate(OpenElevatorDoors(elidx))
+    end
+    # Without this trigger a doors_open true->false write (the only state
+    # CloseElevatorDoors touches) can never rebirth this event: the depnet
+    # drops a disabled event's read-dependencies, and generators are the only
+    # rebirth path. Found by deriving generators from the precondition, which
+    # reads doors_open.
+    @reactto changed(elevator[elidx].doors_open) do system
         generate(OpenElevatorDoors(elidx))
     end
     @reactto changed(calls[callkey].requested) do system
@@ -584,6 +598,28 @@ end
     @reactto changed(elevator[elidx].doors_open) do system
         generate(StopElevator(elidx))
     end
+    # Without this trigger, dispatching an elevator that already sits at a
+    # boundary floor can never stop it: the precondition's next_floor check
+    # reads direction, DispatchElevator writes only direction, and the depnet
+    # holds no edges for a disabled event. Found because the derived
+    # generators (which trigger on every precondition read) fired
+    # StopElevator here and the trajectories diverged.
+    @reactto changed(elevator[elidx].direction) do system
+        generate(StopElevator(elidx))
+    end
+    # The doors_will_open term reads the calls dict and the button set, so a
+    # new call (CallElevator fires while this elevator idles at a boundary
+    # floor) or a button change can newly enable a stop. Same rebirth gap as
+    # doors_open on OpenElevatorDoors, found by trajectory divergence against
+    # the derived generators.
+    @reactto changed(elevator[elidx].buttons_pressed) do system
+        generate(StopElevator(elidx))
+    end
+    @reactto changed(calls[callkey].requested) do system
+        for elidx in 1:length(system.elevator)
+            generate(StopElevator(elidx))
+        end
+    end
 end
 
 function precondition(evt::StopElevator, system)
@@ -722,7 +758,7 @@ function run_elevator()
     @assert length(included_transitions) == 9
     trajectory = TrajectorySave()
     sim = SimulationFSM(
-        physical, Sampler(), included_transitions; rng=Xoshiro(93472934), observer=trajectory
+        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934), observer=trajectory
     )
     trajectory.sim = sim
     # Stop-condition is called after the next event is chosen but before the
@@ -759,7 +795,7 @@ function run_with_trace()
     @assert length(included_transitions) == 9
     tla_recorder = TLATraceRecorder()
     sim = SimulationFSM(
-        physical, Sampler(), included_transitions; rng=Xoshiro(93472934), observer=tla_recorder
+        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934), observer=tla_recorder
     )
     tla_recorder.sim = sim
     # Stop-condition is called after the next event is chosen but before the
