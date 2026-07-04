@@ -14,6 +14,8 @@ using Test
 
 using ChronoSimExamples: ReliabilitySim, ReliabilityDerivedSim
 using ChronoSimExamples: ElevatorExample, ElevatorDerivedExample
+using ChronoSimExamples: SIRVillage, SIRVillageDerived
+using Logging
 
 # Distinct struct types live in distinct modules, so an Enum-typed event field
 # (DispatchElevator.direction) carries a module-specific enum value:
@@ -83,6 +85,50 @@ function _elevator_trajectory(M; minutes=120.0, seed=93472934)
     return traj
 end
 
+function _sirvillage_trajectory(M; N=30, L=10, days=15.0, seed=2938423)
+    rng = Xoshiro(seed)
+    physical = M.Village(N, L, 1.0, rng)
+    included = [M.InitEvent, M.Travel, M.Infect, M.Recover, M.Reset, M.Mutate]
+    traj = Tuple{Tuple,Float64}[]
+    observer = (p, when, event, changed) -> push!(traj, (clock_key(event), when))
+    sim = SimulationFSM(physical, included; rng=rng, observer=observer)
+    stop_condition = (p, step_idx, event, when) -> when > days
+    # InitEvent logs an @info per run; silence it so the differential comparison is
+    # not buried in output.
+    with_logger(ConsoleLogger(stderr, Logging.Warn)) do
+        ChronoSim.run(sim, M.InitEvent(), stop_condition)
+    end
+    return traj
+end
+
+@testset "sirvillage hand-written and derived trajectories are identical" begin
+    hand = _norm(_sirvillage_trajectory(SIRVillage))
+    # Coverage oracle ON around the derived run: Infect's two-field derivation is a
+    # superset generator (O(N) proposals per state change), and its precondition
+    # reads only observed actor state plus the Param-wrapped (unobserved) actor_params
+    # config. If any observed read were left uncovered the run would throw here.
+    ChronoSim.check_derivation_coverage(true)
+    derived = try
+        _norm(_sirvillage_trajectory(SIRVillageDerived))
+    finally
+        ChronoSim.check_derivation_coverage(false)
+    end
+    div = _first_divergence(hand, derived)
+    if div !== nothing
+        i, h, d = div
+        @info "sirvillage trajectory divergence at index $i: hand=$(h) derived=$(d)" length(
+            hand
+        ) length(derived)
+    end
+    # The run exercises Infect (the headline two-field event) and Mutate (strain
+    # birth into the ObservedDict). Both are present at this horizon.
+    hand_events = Set(k[1] for (k, _) in hand)
+    @test :Infect in hand_events
+    @test :Mutate in hand_events
+    @test length(hand) > 100
+    @test hand == derived
+end
+
 @testset "reliability hand-written and derived trajectories are identical" begin
     hand = _norm(_reliability_trajectory(ReliabilitySim))
     # The coverage oracle turns this differential test into a CI soundness
@@ -139,6 +185,10 @@ end
         ElevatorDerivedExample.OpenElevatorDoors,
         ElevatorDerivedExample.EnterElevator,
         ElevatorDerivedExample.ExitElevator,
+        SIRVillageDerived.Infect,
+        SIRVillageDerived.Recover,
+        SIRVillageDerived.Reset,
+        SIRVillageDerived.Mutate,
     )
         txt = sprint(io -> derivation_report(io, T))
         @test occursin("Derivation report", txt)

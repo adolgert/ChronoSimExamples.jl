@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+      # Long-running integration branch for the generator-derivation work; the
+      # differential/coverage/over-approximation evaluations must run in CI.
+      - dev/generator
     tags: ['*']
   pull_request:
   workflow_dispatch:
@@ -23,23 +26,49 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.11'
-          - 'pre'
+          # The Manifest tracks working-tree checkouts of ChronoSim and
+          # CompetingClocks resolved under current stable; 'pre' adds noise
+          # without guarding anything the dev branches promise.
+          - '1'
         os:
           - ubuntu-latest
         arch:
           - x64
     steps:
       - uses: actions/checkout@v4
+      # The Manifest points at sibling working-tree checkouts
+      # (/home/adolgert/dev/...), which do not exist on a runner. Check the
+      # siblings out and re-develop them by path before building.
+      - uses: actions/checkout@v4
+        with:
+          repository: adolgert/ChronoSim.jl
+          ref: dev/generator
+          path: deps/ChronoSim.jl
+      - uses: actions/checkout@v4
+        with:
+          repository: adolgert/CompetingClocks.jl
+          path: deps/CompetingClocks.jl
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
+      - name: Develop sibling dependencies
+        shell: julia --project=. --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.develop([
+            PackageSpec(path="deps/CompetingClocks.jl"),
+            PackageSpec(path="deps/ChronoSim.jl"),
+          ])
+          Pkg.instantiate()
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
+    # The docs environment instantiates the path-dev Manifest, which only
+    # resolves on main's registered dependency graph; the integration branch
+    # gets the test job alone.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created

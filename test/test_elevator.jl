@@ -10,7 +10,13 @@ end
 
 @testset "Elevator tlaplus" begin
     using ChronoSimExamples.ElevatorExample
-    with_logger(ConsoleLogger(stderr, Logging.Info)) do
-        ElevatorExample.run_with_trace()
+    # TLC validation shells out to a locally-installed tla2tools.jar, which CI
+    # runners do not have; the trace machinery is exercised only locally.
+    if continuous_integration()
+        @info "Skipping TLA+ trace validation on CI (no tla2tools.jar)"
+    else
+        with_logger(ConsoleLogger(stderr, Logging.Info)) do
+            ElevatorExample.run_with_trace()
+        end
     end
 end
