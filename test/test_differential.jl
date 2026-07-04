@@ -85,7 +85,15 @@ end
 
 @testset "reliability hand-written and derived trajectories are identical" begin
     hand = _norm(_reliability_trajectory(ReliabilitySim))
-    derived = _norm(_reliability_trajectory(ReliabilityDerivedSim))
+    # The coverage oracle turns this differential test into a CI soundness
+    # assertion: if a derived precondition reads a place no derived trigger covers,
+    # the run throws instead of silently missing an event.
+    ChronoSim.check_derivation_coverage(true)
+    derived = try
+        _norm(_reliability_trajectory(ReliabilityDerivedSim))
+    finally
+        ChronoSim.check_derivation_coverage(false)
+    end
     div = _first_divergence(hand, derived)
     if div !== nothing
         i, h, d = div
@@ -104,7 +112,12 @@ end
 
 @testset "elevator hand-written and derived trajectories are identical" begin
     hand = _norm(_elevator_trajectory(ElevatorExample))
-    derived = _norm(_elevator_trajectory(ElevatorDerivedExample))
+    ChronoSim.check_derivation_coverage(true)
+    derived = try
+        _norm(_elevator_trajectory(ElevatorDerivedExample))
+    finally
+        ChronoSim.check_derivation_coverage(false)
+    end
     div = _first_divergence(hand, derived)
     if div !== nothing
         i, h, d = div
