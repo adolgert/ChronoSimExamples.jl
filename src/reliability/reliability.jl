@@ -25,7 +25,7 @@ end
 
 # This is the physical state of the system. It will report its reads and writes.
 @observedphysical IndividualState begin
-    actors::ObservedVector{Individual}
+    actors::ObservedVector{Individual,Member}
     params::Vector{IndividualParams}
     workers_max::Int
     start_time::Float64
@@ -39,7 +39,7 @@ function IndividualState(actor_cnt, crew_size)
     p = IndividualParams(done_rate, break_rate, repair_rate)
     params = Vector{IndividualParams}(undef, actor_cnt)
     fill!(params, p)
-    actors = ObservedArray{Individual}(undef, actor_cnt)
+    actors = ObservedArray{Individual,Member}(undef, actor_cnt)
     for i in 1:actor_cnt
         actors[i] = Individual(ready, 0.0, 0.0)
     end

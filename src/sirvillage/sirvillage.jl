@@ -78,10 +78,10 @@ end
 
 # This is the physical state of the system. It will report its reads and writes.
 @observedphysical Village begin
-    actors::ObservedVector{Individual}
+    actors::ObservedVector{Individual,Member}
     actor_params::Vector{IndividualParams}
-    locations::ObservedVector{Location}
-    strains::ObservedVector{Strain}
+    locations::ObservedVector{Location,Member}
+    strains::ObservedVector{Strain,Member}
 end
 
 
@@ -121,15 +121,15 @@ function Village(actor_cnt::Int, location_cnt::Int, day_length::AbstractFloat, r
             )
         params[param_idx] = IndividualParams(rand(rng, robust_dist), locations, exit_sum, exit_frac)
     end
-    actors = ObservedArray{Individual}(undef, actor_cnt)
+    actors = ObservedArray{Individual,Member}(undef, actor_cnt)
     for i in 1:actor_cnt
         actors[i] = Individual(Susceptible, 0, 0)
     end
-    locations = ObservedArray{Location}(undef, location_cnt)
+    locations = ObservedArray{Location,Member}(undef, location_cnt)
     for loc_idx in 1:location_cnt
         locations[loc_idx] = Location(0, Int64[])
     end
-    strains = ObservedArray{Strain}(undef, 1)
+    strains = ObservedArray{Strain,Member}(undef, 1)
     initial_infectivity = 1.0
     initial_virulence = 1.0
     strains[1] = Strain(initial_infectivity, initial_virulence, 0)
