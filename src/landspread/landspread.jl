@@ -16,7 +16,7 @@ export run_landspread, landspread_likelihood
 
 # We won't use the ChronoSim.@observedphysical macro for this simulation.
 # Instead, every time we read from or write to the state, we'll note it to
-# the simulation using the @observe macro.
+# the simulation using the @obsread and @obswrite macros.
 struct Landscape <: ObservedPhysical
     mark::Array{Int,1}  # State of each point.
     distance::Array{Float64,2}  # Distance matrix among points.
@@ -47,8 +47,8 @@ end
 end
 
 function precondition(evt::Spread, land)
-    @observe land.mark[evt.source]
-    @observe land.mark[evt.destination]
+    @obsread land.mark[evt.source]
+    @obsread land.mark[evt.destination]
     return evt.source != evt.destination &&
         land.mark[evt.source] == 1 &&
         land.mark[evt.destination] == 0
@@ -61,11 +61,11 @@ function enable(evt::Spread, land, when)
 end
 
 function fire!(evt::Spread, land, when, rng)
-    @observe land.mark[evt.destination] = 1
+    @obswrite land.mark[evt.destination] = 1
 end
 
 function init_physical!(land, when, rng)
-    @observe land.mark[1] = 1
+    @obswrite land.mark[1] = 1
 end
 
 struct TrajectoryEntry
