@@ -77,11 +77,22 @@ end
 
 
 # This is the physical state of the system. It will report its reads and writes.
+# strains is keyed (ObservedDict) rather than positional (ObservedVector) because
+# strains are BORN at runtime: Mutate adds a child strain. A fixed-extent
+# ObservedVector would throw FixedExtentError on push!; a dict lets a birth touch
+# exactly one place (its new key). next_strain_id is a plain tracked Int that hands
+# out fresh strain ids without reading the dict's length inside an event body.
 @observedphysical Village begin
     actors::ObservedVector{Individual,Member}
-    actor_params::Vector{IndividualParams}
+    # actor_params is immutable per-person config (never written after construction).
+    # Wrapping it in Param marks it UnObservable so field access emits no read
+    # notification. As a plain Vector it would emit a coarse whole-field read on
+    # every access, which the derivation coverage oracle flags as an uncovered read
+    # in Infect's precondition even though the config never changes.
+    actor_params::Param{Vector{IndividualParams}}
     locations::ObservedVector{Location,Member}
-    strains::ObservedVector{Strain,Member}
+    strains::ObservedDict{Int64,Strain,Member}
+    next_strain_id::Int64
 end
 
 
@@ -129,11 +140,12 @@ function Village(actor_cnt::Int, location_cnt::Int, day_length::AbstractFloat, r
     for loc_idx in 1:location_cnt
         locations[loc_idx] = Location(0, Int64[])
     end
-    strains = ObservedArray{Strain,Member}(undef, 1)
+    strains = ObservedDict{Int64,Strain,Member}()
     initial_infectivity = 1.0
     initial_virulence = 1.0
     strains[1] = Strain(initial_infectivity, initial_virulence, 0)
-    return Village(actors, params, locations, strains)
+    # Strain id 1 is the founding strain; the next born strain gets id 2.
+    return Village(actors, params, locations, strains, 2)
 end
 
 
@@ -328,8 +340,12 @@ function fire!(evt::Mutate, physical, when, rng)
     # infectivity or virulence, on average.
     child_rates = exp.(rand(rng, MvNormal([infectivity, virulence], sigma)))
     child = Strain(child_rates[1], child_rates[2], strain_idx)
-    push!(physical.strains, child)
-    physical.actors[evt.carrier].strain = length(physical.strains)
+    # A born strain claims a fresh id from the counter rather than the dict length,
+    # so no event body reads the whole strains container.
+    child_id = physical.next_strain_id
+    physical.strains[child_id] = child
+    physical.next_strain_id += 1
+    physical.actors[evt.carrier].strain = child_id
 end
 
 struct InitEvent <: SimEvent end
@@ -363,7 +379,7 @@ function validate_invariants(physical)
     if strain_cnt < 1
         push!(err_msg, "There are no physical.strains")
     end
-    for sidx in eachindex(physical.strains)
+    for sidx in keys(physical.strains)
         strain = physical.strains[sidx]
         if strain.infectivity < 0.0 || strain.virulence < 0.0
             push!(
@@ -371,7 +387,9 @@ function validate_invariants(physical)
                 "Strain $sidx infectivity=$(strain.infectivity) and virulence $(strain.virulence)"
                 )
         end
-        if strain.parent < 0 || strain.parent > length(physical.strains)
+        # parent 0 is the founding strain's root; otherwise it must name an id
+        # already handed out by the counter.
+        if strain.parent < 0 || strain.parent >= physical.next_strain_id
             push!(err_msg, "Strain $sidx parent $(strain.parent)")
         end
     end

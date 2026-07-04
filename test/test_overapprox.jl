@@ -13,6 +13,8 @@ using Test
 
 using ChronoSimExamples: ReliabilitySim, ReliabilityDerivedSim
 using ChronoSimExamples: ElevatorExample, ElevatorDerivedExample
+using ChronoSimExamples: SIRVillage, SIRVillageDerived
+using Logging
 
 # Run a trajectory function with the counters on and return a snapshot of the
 # accumulated per-event-type stats. The counters are process-global, so reset
@@ -97,6 +99,36 @@ function _report(model, hand, derived)
         )
     end
     return String(take!(io)), types
+end
+
+# N (actor count) is returned so the Infect over-approximation factor can be read
+# against population size: derived proposes O(N) Infect candidates per state change
+# where the hand-written generator proposes only co-located pairs.
+function _run_sirvillage(M; N=30, L=10, days=15.0, seed=2938423)
+    rng = Xoshiro(seed)
+    physical = M.Village(N, L, 1.0, rng)
+    included = [M.InitEvent, M.Travel, M.Infect, M.Recover, M.Reset, M.Mutate]
+    sim = SimulationFSM(physical, included; rng=rng)
+    stop_condition = (p, step_idx, event, when) -> when > days
+    with_logger(ConsoleLogger(stderr, Logging.Warn)) do
+        ChronoSim.run(sim, M.InitEvent(), stop_condition)
+    end
+    return nothing
+end
+
+@testset "sirvillage over-approximation: derived proposes a superset, equal admissions" begin
+    actor_cnt = 30
+    hand = _run_with_stats(() -> _run_sirvillage(SIRVillage; N=actor_cnt))
+    derived = _run_with_stats(() -> _run_sirvillage(SIRVillageDerived; N=actor_cnt))
+    report, types = _report("sirvillage (N=$actor_cnt actors)", hand, derived)
+    @info report
+    for t in types
+        h = get(hand, t, (proposed=0, admitted=0))
+        d = get(derived, t, (proposed=0, admitted=0))
+        @test h.admitted == d.admitted
+        @test d.proposed >= h.proposed
+    end
+    @test sum(d.admitted for d in values(derived)) > 0
 end
 
 @testset "reliability over-approximation: derived proposes a superset, equal admissions" begin
