@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../ChronoSim.jl"
+		},
+		{
+			"path": "../CompetingClocks.jl"
+		}
+	],
+	"settings": {}
+}

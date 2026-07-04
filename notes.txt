@@ -1,0 +1,7 @@
+
+
+ * What is the error message when @reactto uses a begin instead of a do?
+ * ObservedVector is built with a call to ObservedArray. That's wrong.
+ * LoadError: setfield!: immutable struct of type IndividualParams cannot be changed.
+   This tells me that when you set an undef field of ObservedVector it should say,
+   hey, maybe you didn't want an ObservedVector.
