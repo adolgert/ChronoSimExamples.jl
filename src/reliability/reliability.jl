@@ -2,6 +2,7 @@ module ReliabilitySim
 using ChronoSim
 using ChronoSim.ObservedState
 using CompetingClocks
+using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using Distributions
 using Random

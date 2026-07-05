@@ -39,6 +39,7 @@
 # keys and their trajectories compare directly. TLA recorder parts are not ported.
 module ElevatorDerivedExample
 using CompetingClocks
+using CompetingClocks: CombinedNextReaction
 using Distributions
 using Logging
 using Random

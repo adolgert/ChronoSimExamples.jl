@@ -2,6 +2,7 @@ module LandSpread
 
 using ChronoSim
 using CompetingClocks
+using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using ChronoSim.ObservedState
 using Distributions
