@@ -47,7 +47,7 @@ end
     end
 end
 
-function precondition(evt::Spread, land)
+@guard function precondition(evt::Spread, land)
     @obsread land.mark[evt.source]
     @obsread land.mark[evt.destination]
     return evt.source != evt.destination &&

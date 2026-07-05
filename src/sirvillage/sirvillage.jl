@@ -160,7 +160,7 @@ struct Travel <: SimEvent
     who::Int64
 end
 
-precondition(event::Travel, physical) = true
+@guard precondition(event::Travel, physical) = true
 
 @conditionsfor Travel begin
     @reactto changed(actors[who].haunt) do physical
@@ -199,7 +199,7 @@ struct Infect <: SimEvent
     sink::Int64
 end
 
-function precondition(evt::Infect, physical)
+@guard function precondition(evt::Infect, physical)
     source_state = physical.actors[evt.source].state
     source_haunt = physical.actors[evt.source].haunt
     source_loc = physical.actor_params[evt.source].haunts[source_haunt]
@@ -263,7 +263,7 @@ struct Recover <: SimEvent
     who::Int64
 end
 
-precondition(evt::Recover, physical) = physical.actors[evt.who].state == Infectious
+@guard precondition(evt::Recover, physical) = physical.actors[evt.who].state == Infectious
 
 @conditionsfor Recover begin
     @reactto changed(actors[who].state) do physical
@@ -288,7 +288,7 @@ struct Reset <: SimEvent
     who::Int64
 end
 
-precondition(evt::Reset, physical) = physical.actors[evt.who].state == Recovered
+@guard precondition(evt::Reset, physical) = physical.actors[evt.who].state == Recovered
 
 @conditionsfor Reset begin
     @reactto changed(actors[who].state) do physical
@@ -314,7 +314,7 @@ struct Mutate <: SimEvent
     carrier::Int64
 end
 
-function precondition(evt::Mutate, physical)
+@guard function precondition(evt::Mutate, physical)
     return physical.actors[evt.carrier].state == Infectious
 end
 

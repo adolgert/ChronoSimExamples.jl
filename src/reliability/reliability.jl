@@ -51,7 +51,7 @@ worker_cnt(physical::IndividualState) = length(physical.actors)
 
 struct StartDay <: SimEvent end
 
-precondition(event::StartDay, physical) = true
+@guard precondition(event::StartDay, physical) = true
 
 @conditionsfor StartDay begin
     @reactto changed(actors[i].state) do physical
@@ -83,7 +83,7 @@ struct EndDay <: SimEvent
     actor_idx::Int
 end
 
-precondition(evt::EndDay, physical) = physical.actors[evt.actor_idx].state == working
+@guard precondition(evt::EndDay, physical) = physical.actors[evt.actor_idx].state == working
 
 @conditionsfor EndDay begin
     @reactto changed(actors[actor].state) do physical
@@ -106,7 +106,7 @@ struct Break <: SimEvent
     actor_idx::Int
 end
 
-precondition(evt::Break, physical) = physical.actors[evt.actor_idx].state == working
+@guard precondition(evt::Break, physical) = physical.actors[evt.actor_idx].state == working
 
 @conditionsfor Break begin
     @reactto changed(actors[actor].state) do physical
@@ -130,7 +130,7 @@ struct Repair <: SimEvent
     actor_idx::Int
 end
 
-precondition(evt::Repair, physical) = physical.actors[evt.actor_idx].state == broken
+@guard precondition(evt::Repair, physical) = physical.actors[evt.actor_idx].state == broken
 
 @conditionsfor Repair begin
     @reactto changed(actors[actor].state) do physical

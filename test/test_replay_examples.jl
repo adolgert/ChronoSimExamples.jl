@@ -93,20 +93,17 @@ end
     end
 end
 
-@testset "hand-written events are not guard_clauses-covered" begin
-    # The design's registry-gap table: hand-written @conditionsfor events bake
-    # no precondition_ast, so guard_clauses refuses them with :no_precondition.
-    # The state argument is never reached; any physical works.
-    skel = _record_elevator()
-    sim = replay(_elevator_factory, skel; upto=0)
-    err = try
-        guard_clauses(ElevatorExample.OpenElevatorDoors(1), sim.physical)
-        nothing
-    catch e
-        e
-    end
-    @test err isa GuardEvalError
-    @test err.kind === :no_precondition
+@testset "hand-written @guard events are guard_clauses-covered" begin
+    # Phase 3: the hand-written elevator preconditions are annotated @guard, which
+    # emits the precondition verbatim (byte-identical runtime) AND bakes
+    # precondition_ast — so guard_clauses now evaluates them. Previously a
+    # @conditionsfor-only event baked no precondition_ast and guard_clauses refused
+    # it with :no_precondition; @guard closes that registry gap for hand-written
+    # models. A freshly built hand system exercises the now-live clause analysis.
+    system = ElevatorExample.ElevatorSystem(1, 1, 3)
+    clauses = guard_clauses(ElevatorExample.OpenElevatorDoors(1), system)
+    @test clauses isa AbstractVector
+    @test !isempty(clauses)
 end
 
 @testset "whynot ingredient: rejected conjunct is named" begin

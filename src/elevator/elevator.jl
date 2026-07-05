@@ -124,13 +124,15 @@ end
 ######## Helper functions
 
 get_distance(floor1, floor2) = abs(floor1 - floor2)
-get_direction(current, destination) = destination > current ? Up : Down
-function can_service_call(elevator, call_floor, call_dirn)
+# @fragment marks these helpers so a @guard precondition may pass state into them
+# for the footprint lint's read derivation (analysis-only; emitted verbatim).
+@fragment get_direction(current, destination) = destination > current ? Up : Down
+@fragment function can_service_call(elevator, call_floor, call_dirn)
     elevator.floor == call_floor && elevator.direction == call_dirn
 end
 
 
-function people_waiting(people, floor, dirn)
+@fragment function people_waiting(people, floor, dirn)
     waiters = Int[]
     for pidx in eachindex(people)
         p = people[pidx]
@@ -313,7 +315,7 @@ end
     end
 end
 
-function precondition(evt::PickNewDestination, system)
+@guard function precondition(evt::PickNewDestination, system)
     person = system.person[evt.person]
     return !person.waiting && person.location != 0
 end
@@ -337,7 +339,7 @@ end
     end
 end
 
-function precondition(evt::CallElevator, system)
+@guard function precondition(evt::CallElevator, system)
     person = system.person[evt.person]
     # The location != 0 guard makes the precondition self-contained rather than
     # relying on the narrowness of the destination-only trigger to avoid the
@@ -396,7 +398,7 @@ end
     end
 end
 
-function precondition(evt::OpenElevatorDoors, system)
+@guard function precondition(evt::OpenElevatorDoors, system)
     elevator = system.elevator[evt.elevator_idx]
 
     # This is a faster way to say there exists a call this elevator can service,
@@ -441,7 +443,7 @@ end
     end
 end
 
-function precondition(evt::EnterElevator, system)
+@guard function precondition(evt::EnterElevator, system)
     elevator = system.elevator[evt.elevator_idx]
     elevator_ready = (elevator.doors_open && elevator.direction != Stationary)
     people_ready = !isempty(people_waiting(system.person, elevator.floor, elevator.direction))
@@ -490,7 +492,7 @@ end
     end
 end
 
-function precondition(evt::ExitElevator, system)
+@guard function precondition(evt::ExitElevator, system)
     elevator = system.elevator[evt.elevator_idx]
 
     # Check if anyone in this elevator wants to exit at this floor
@@ -538,7 +540,7 @@ end
     end
 end
 
-function precondition(evt::CloseElevatorDoors, system)
+@guard function precondition(evt::CloseElevatorDoors, system)
     elevator = system.elevator[evt.elevator_idx]
 
     # No one can enter or exit
@@ -603,7 +605,7 @@ end
     end
 end
 
-function precondition(evt::MoveElevator, system)
+@guard function precondition(evt::MoveElevator, system)
     elevator = system.elevator[evt.elevator_idx]
     next_floor = elevator.direction == Up ? elevator.floor + 1 : elevator.floor - 1
     next_floor_valid = next_floor >= 1 && next_floor <= system.floor_cnt
@@ -676,7 +678,7 @@ end
     end
 end
 
-function precondition(evt::StopElevator, system)
+@guard function precondition(evt::StopElevator, system)
     elevator = system.elevator[evt.elevator_idx]
     next_floor = elevator.direction == Up ? elevator.floor + 1 : elevator.floor - 1
     next_floor_valid = 1 <= next_floor <= system.floor_cnt
@@ -714,7 +716,7 @@ end
     end
 end
 
-function precondition(evt::DispatchElevator, system)
+@guard function precondition(evt::DispatchElevator, system)
     # Call must exist and be active
     call_active = system.calls[(evt.floor, evt.direction)].requested
     any_stationary = any(elevator.direction == Stationary for elevator in system.elevator)
