@@ -65,7 +65,7 @@ function enable(evt::StartDay, physical, when)
     return (Dirac(interval), when)
 end
 
-function fire!(evt::StartDay, physical, when, rng)
+@fire function fire!(evt::StartDay, physical, when, rng)
     crew_cnt = 0
     for car in eachindex(physical.actors)
         if physical.actors[car].state == ready
@@ -95,7 +95,7 @@ function enable(evt::EndDay, physical, when)
     return (physical.params[evt.actor_idx].done_dist, when)
 end
 
-function fire!(evt::EndDay, physical, when, rng)
+@fire function fire!(evt::EndDay, physical, when, rng)
     physical.actors[evt.actor_idx].state = ready
     started_work = physical.actors[evt.actor_idx].started_working_time
     physical.actors[evt.actor_idx].work_age += when - started_work
@@ -120,7 +120,7 @@ function enable(evt::Break, physical, when)
     return (physical.params[evt.actor_idx].fail_dist, started_ago)
 end
 
-function fire!(evt::Break, physical, when, rng)
+@fire function fire!(evt::Break, physical, when, rng)
     physical.actors[evt.actor_idx].state = broken
     started_work = physical.actors[evt.actor_idx].started_working_time
     physical.actors[evt.actor_idx].work_age += when - started_work
@@ -142,7 +142,7 @@ function enable(evt::Repair, physical, when)
     return (physical.params[evt.actor_idx].repair_dist, when)
 end
 
-function fire!(evt::Repair, physical, when, rng)
+@fire function fire!(evt::Repair, physical, when, rng)
     physical.actors[evt.actor_idx].state = ready
     physical.actors[evt.actor_idx].work_age = 0.0
 end

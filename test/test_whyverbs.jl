@@ -19,7 +19,7 @@ using Logging
 using Random
 using Test
 
-using ChronoSimExamples: ElevatorDerivedExample, ElevatorExample, SIRVillage
+using ChronoSimExamples: ElevatorDerivedExample, ElevatorExample, SIRVillage, SIRVillageDerived
 
 include("whyverbs_elevator_stopbug.jl")   # module ElevatorStopBug
 include("whyverbs_elevator_nobutton.jl")  # module ElevatorNoButton
@@ -114,26 +114,41 @@ end
     @test count(==('\n'), sprint(show, MIME"text/plain"(), rep)) <= 30
 end
 
-########## Scenario 3 — a stop predicate that can never become true (sirvillage) ##########
+########## Scenario 3 — a stop predicate PROVABLY unreachable (sirvillage) ##########
+#
+# Upgraded from "not written recently" to "provably cannot be written" using the
+# @fire-annotated derived twin: with Mutate excluded, only InitEvent (the boot
+# event, fired once) writes next_strain_id, so among the steady-state events that
+# fire during the run none can ever write it. can_stop_change proves :cannot_change
+# and whyrunning prints "no event can ever write".
 
-@testset "whyrunning: predicate reads state nothing writes" begin
+@testset "whyrunning: predicate PROVABLY cannot become true (cannot_change)" begin
     rng = Xoshiro(2938423)
-    physical = SIRVillage.Village(30, 10, 1.0, rng)
-    # included_transitions minus Mutate, so no step ever increments next_strain_id.
-    included = [SIRVillage.InitEvent, SIRVillage.Travel, SIRVillage.Infect,
-        SIRVillage.Recover, SIRVillage.Reset]
+    physical = SIRVillageDerived.Village(30, 10, 1.0, rng)
+    # Steady-state events fired during the run (InitEvent boots once; Mutate absent,
+    # so no running event ever increments next_strain_id).
+    steady = [SIRVillageDerived.Travel, SIRVillageDerived.Infect,
+        SIRVillageDerived.Recover, SIRVillageDerived.Reset]
+    included = vcat(SIRVillageDerived.InitEvent, steady)
     rec = RecordSkeleton()
     sim = SimulationFSM(physical, included; rng=rng, policy=rec)
     with_logger(ConsoleLogger(stderr, Logging.Warn)) do
-        ChronoSim.run(sim, SIRVillage.InitEvent(), (p, i, e, w) -> w > 2.0)
+        ChronoSim.run(sim, SIRVillageDerived.InitEvent(), (p, i, e, w) -> w > 2.0)
     end
     skel = recorded_skeleton(rec)
 
-    rep = whyrunning(sim, skel, phys -> phys.next_strain_id > 10)
+    predicate = phys -> phys.next_strain_id > 10
+
+    # The stop reads next_strain_id; no steady-state event writes it.
+    reads = ChronoSim.capture_state_reads(() -> predicate(sim.physical), sim.physical).reads
+    sw = ChronoSim.can_stop_change(reads, steady)
+    @test sw.verdict === :cannot_change
+
+    rep = whyrunning(sim, skel, predicate; events=steady)
     @test rep.predicate_value == false
     @test any(e -> e.address == (Member(:next_strain_id),), rep.reads)
     @test rep.predicate_writes_in_window == []
-    @test rep.reachability == "reachability analysis requires effect analysis (not yet run)"
+    @test occursin("no event can ever write", rep.reachability)
     block = sprint(show, MIME"text/plain"(), rep)
     @test occursin("next_strain_id", block)
     @test count(==('\n'), block) <= 30

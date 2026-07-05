@@ -41,17 +41,19 @@ function _first_divergence(a, b)
     return nothing
 end
 
-function _reliability_trajectory(M; days=10.0, seed=2947223)
+function _reliability_trajectory(M; days=10.0, seed=2947223, oracle=false)
     physical = M.IndividualState(15, 10)
     included = [M.StartDay, M.EndDay, M.Break, M.Repair]
     traj = Tuple{Tuple,Float64}[]
     observer = (p, when, event, changed) -> push!(traj, (clock_key(event), when))
+    policy = oracle ? ChronoSim.CheckEffects(included) : ChronoSim.NoPolicy()
     sim = SimulationFSM(
         physical,
         included;
         rng=Xoshiro(seed),
         sampler=CombinedNextReaction{Tuple,Float64}(),
         observer=observer,
+        policy=policy,
     )
     initializer = (init_physical, when, rng) -> M.initialize!(init_physical, rng)
     stop_condition = (p, step_idx, event, when) -> when > days
@@ -59,7 +61,7 @@ function _reliability_trajectory(M; days=10.0, seed=2947223)
     return traj
 end
 
-function _elevator_trajectory(M; minutes=120.0, seed=93472934)
+function _elevator_trajectory(M; minutes=120.0, seed=93472934, oracle=false)
     physical = M.ElevatorSystem(1, 1, 3)
     included = [
         M.PickNewDestination,
@@ -74,25 +76,28 @@ function _elevator_trajectory(M; minutes=120.0, seed=93472934)
     ]
     traj = Tuple{Tuple,Float64}[]
     observer = (p, when, event, changed) -> push!(traj, (clock_key(event), when))
+    policy = oracle ? ChronoSim.CheckEffects(included) : ChronoSim.NoPolicy()
     sim = SimulationFSM(
         physical,
         included;
         rng=Xoshiro(seed),
         sampler=CombinedNextReaction{Tuple,Float64}(),
         observer=observer,
+        policy=policy,
     )
     stop_condition = (p, step_idx, event, when) -> when > minutes
     ChronoSim.run(sim, M.init_physical, stop_condition)
     return traj
 end
 
-function _sirvillage_trajectory(M; N=30, L=10, days=15.0, seed=2938423)
+function _sirvillage_trajectory(M; N=30, L=10, days=15.0, seed=2938423, oracle=false)
     rng = Xoshiro(seed)
     physical = M.Village(N, L, 1.0, rng)
     included = [M.InitEvent, M.Travel, M.Infect, M.Recover, M.Reset, M.Mutate]
     traj = Tuple{Tuple,Float64}[]
     observer = (p, when, event, changed) -> push!(traj, (clock_key(event), when))
-    sim = SimulationFSM(physical, included; rng=rng, observer=observer)
+    policy = oracle ? ChronoSim.CheckEffects(included) : ChronoSim.NoPolicy()
+    sim = SimulationFSM(physical, included; rng=rng, observer=observer, policy=policy)
     stop_condition = (p, step_idx, event, when) -> when > days
     # InitEvent logs an @info per run; silence it so the differential comparison is
     # not buried in output.
@@ -103,14 +108,18 @@ function _sirvillage_trajectory(M; N=30, L=10, days=15.0, seed=2938423)
 end
 
 @testset "sirvillage hand-written and derived trajectories are identical" begin
-    hand = _norm(_sirvillage_trajectory(SIRVillage))
+    # Effect oracle ON for BOTH twins (all fire! are @fire'd): every captured
+    # changed address must match a declared WriteSpec, or the run throws. This also
+    # exercises the on_init path (InitEvent is @fire'd and fired via run(sim, evt))
+    # and an inline immediate-event-free union merge.
+    hand = _norm(_sirvillage_trajectory(SIRVillage; oracle=true))
     # Coverage oracle ON around the derived run: Infect's two-field derivation is a
     # superset generator (O(N) proposals per state change), and its precondition
     # reads only observed actor state plus the Param-wrapped (unobserved) actor_params
     # config. If any observed read were left uncovered the run would throw here.
     ChronoSim.check_derivation_coverage(true)
     derived = try
-        _norm(_sirvillage_trajectory(SIRVillageDerived))
+        _norm(_sirvillage_trajectory(SIRVillageDerived; oracle=true))
     finally
         ChronoSim.check_derivation_coverage(false)
     end
@@ -131,13 +140,13 @@ end
 end
 
 @testset "reliability hand-written and derived trajectories are identical" begin
-    hand = _norm(_reliability_trajectory(ReliabilitySim))
+    hand = _norm(_reliability_trajectory(ReliabilitySim; oracle=true))
     # The coverage oracle turns this differential test into a CI soundness
     # assertion: if a derived precondition reads a place no derived trigger covers,
     # the run throws instead of silently missing an event.
     ChronoSim.check_derivation_coverage(true)
     derived = try
-        _norm(_reliability_trajectory(ReliabilityDerivedSim))
+        _norm(_reliability_trajectory(ReliabilityDerivedSim; oracle=true))
     finally
         ChronoSim.check_derivation_coverage(false)
     end
@@ -158,10 +167,10 @@ end
 end
 
 @testset "elevator hand-written and derived trajectories are identical" begin
-    hand = _norm(_elevator_trajectory(ElevatorExample))
+    hand = _norm(_elevator_trajectory(ElevatorExample; oracle=true))
     ChronoSim.check_derivation_coverage(true)
     derived = try
-        _norm(_elevator_trajectory(ElevatorDerivedExample))
+        _norm(_elevator_trajectory(ElevatorDerivedExample; oracle=true))
     finally
         ChronoSim.check_derivation_coverage(false)
     end
@@ -174,6 +183,92 @@ end
     end
     @test length(hand) > 20
     @test hand == derived
+end
+
+const _ALL_FIRE_TYPES = vcat(
+    [ElevatorExample.PickNewDestination, ElevatorExample.CallElevator,
+     ElevatorExample.OpenElevatorDoors, ElevatorExample.EnterElevator,
+     ElevatorExample.ExitElevator, ElevatorExample.CloseElevatorDoors,
+     ElevatorExample.MoveElevator, ElevatorExample.StopElevator,
+     ElevatorExample.DispatchElevator],
+    [ElevatorDerivedExample.PickNewDestination, ElevatorDerivedExample.CallElevator,
+     ElevatorDerivedExample.OpenElevatorDoors, ElevatorDerivedExample.EnterElevator,
+     ElevatorDerivedExample.ExitElevator, ElevatorDerivedExample.CloseElevatorDoors,
+     ElevatorDerivedExample.MoveElevator, ElevatorDerivedExample.StopElevator,
+     ElevatorDerivedExample.DispatchElevator],
+    [SIRVillage.Travel, SIRVillage.Infect, SIRVillage.Recover, SIRVillage.Reset,
+     SIRVillage.Mutate, SIRVillage.InitEvent],
+    [SIRVillageDerived.Travel, SIRVillageDerived.Infect, SIRVillageDerived.Recover,
+     SIRVillageDerived.Reset, SIRVillageDerived.Mutate, SIRVillageDerived.InitEvent],
+    [ReliabilitySim.StartDay, ReliabilitySim.EndDay, ReliabilitySim.Break, ReliabilitySim.Repair],
+    [ReliabilityDerivedSim.StartDay, ReliabilityDerivedSim.EndDay,
+     ReliabilityDerivedSim.Break, ReliabilityDerivedSim.Repair],
+    [ChronoSimExamples.LandSpread.Spread],
+)
+
+@testset "all 39 fire! methods carry @fire" begin
+    @test length(_ALL_FIRE_TYPES) == 39
+    for T in _ALL_FIRE_TYPES
+        @test hasmethod(ChronoSim.effect_spec, Tuple{Type{T}})
+        @test hasmethod(ChronoSim.fire_ast, Tuple{Type{T}})
+    end
+end
+
+@testset "Phase 2 baked accessors survive precompilation (return real data)" begin
+    # After `using ChronoSimExamples` (a precompiled package) the compile-time
+    # registries are EMPTY; only the baked effect_spec/fire_ast/fragment_ast
+    # methods carry the data. They must return real payloads, not stubs.
+    for T in _ALL_FIRE_TYPES
+        es = ChronoSim.effect_spec(T)
+        @test es isa ChronoSim.EffectSpec
+        @test !isempty(es.writes)
+        (evtsym, statesym, whensym, rngsym, body) = ChronoSim.fire_ast(T)
+        @test evtsym isa Symbol && statesym isa Symbol
+        @test body isa Expr && body.head === :block
+    end
+    # @fragment baked accessor (fragment_ast) for the elevator derived helpers.
+    for helper in (ElevatorDerivedExample.get_direction,
+                   ElevatorDerivedExample.can_service_call,
+                   ElevatorDerivedExample.people_waiting)
+        @test hasmethod(ChronoSim.fragment_ast, Tuple{typeof(helper)})
+        params, fbody = ChronoSim.fragment_ast(helper)
+        @test params isa Vector{Symbol} && !isempty(params)
+        @test fbody isa Expr
+    end
+end
+
+@testset "opaque rhs rate recorded (canary)" begin
+    # Over the derived twin set (+ landspread), the rhs classification mix must
+    # match the design's measured corpus. A walker regression that silently
+    # degrades classification fails this, and the numbers land in the test log.
+    derived = [
+        ElevatorDerivedExample.PickNewDestination, ElevatorDerivedExample.CallElevator,
+        ElevatorDerivedExample.OpenElevatorDoors, ElevatorDerivedExample.EnterElevator,
+        ElevatorDerivedExample.ExitElevator, ElevatorDerivedExample.CloseElevatorDoors,
+        ElevatorDerivedExample.MoveElevator, ElevatorDerivedExample.StopElevator,
+        ElevatorDerivedExample.DispatchElevator,
+        SIRVillageDerived.Travel, SIRVillageDerived.Infect, SIRVillageDerived.Recover,
+        SIRVillageDerived.Reset, SIRVillageDerived.Mutate, SIRVillageDerived.InitEvent,
+        ReliabilityDerivedSim.StartDay, ReliabilityDerivedSim.EndDay,
+        ReliabilityDerivedSim.Break, ReliabilityDerivedSim.Repair,
+        ChronoSimExamples.LandSpread.Spread,
+    ]
+    mix = Dict{Symbol,Int}()
+    total = 0
+    for T in derived
+        for w in ChronoSim.effect_spec(T).writes
+            mix[w.rhs] = get(mix, w.rhs, 0) + 1
+            total += 1
+        end
+    end
+    @info "derived-twin rhs mix" mix total opaque_rate=get(mix, :opaque, 0) / total
+    # 48 sites: Travel's `cnt -= 1`/`cnt += 1` share a mask but keep distinct rhs
+    # ASTs (Phase 4 contract), so they do not merge.
+    @test total == 48
+    @test get(mix, :opaque, 0) == 6
+    @test get(mix, :stochastic, 0) == 5
+    @test get(mix, :state_expr, 0) == 10
+    @test get(mix, :evt_pure, 0) == 27
 end
 
 @testset "derivation_report runs for every converted event type" begin

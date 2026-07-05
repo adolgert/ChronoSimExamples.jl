@@ -130,7 +130,7 @@ function enable(evt::Travel, physical, when)
     return (Weibull(2, scale), when)
 end
 
-function fire!(evt::Travel, physical, when, rng)
+@fire function fire!(evt::Travel, physical, when, rng)
     source_haunt = physical.actors[evt.who].haunt
     source_loc = physical.actor_params[evt.who].haunts[source_haunt]
     probs = physical.actor_params[evt.who].exit_frac
@@ -186,7 +186,7 @@ function enable(evt::Infect, physical, when)
     return (Exponential(inv(infectivity / robust)), when)
 end
 
-function fire!(evt::Infect, physical, when, rng)
+@fire function fire!(evt::Infect, physical, when, rng)
     strain_idx = physical.actors[evt.source].strain
     physical.actors[evt.sink].strain = strain_idx
     physical.actors[evt.sink].state = Infectious
@@ -210,7 +210,7 @@ function enable(evt::Recover, physical, when)
     return (Gamma(3, inv(robust / virulence)), when)
 end
 
-function fire!(evt::Recover, physical, when, rng)
+@fire function fire!(evt::Recover, physical, when, rng)
     physical.actors[evt.who].state = Recovered
 end
 
@@ -227,7 +227,7 @@ function enable(evt::Reset, physical, when)
     return (Exponential(inv(0.05)), when)
 end
 
-function fire!(evt::Reset, physical, when, rng)
+@fire function fire!(evt::Reset, physical, when, rng)
     physical.actors[evt.who].state = Susceptible
     physical.actors[evt.who].strain = 0
 end
@@ -246,7 +246,7 @@ function enable(evt::Mutate, physical, when)
     return (Exponential(inv(mutate_rate)), when)
 end
 
-function fire!(evt::Mutate, physical, when, rng)
+@fire function fire!(evt::Mutate, physical, when, rng)
     strain_idx = physical.actors[evt.carrier].strain
     infectivity = log(physical.strains[strain_idx].infectivity)
     virulence = log(physical.strains[strain_idx].virulence)
@@ -261,7 +261,7 @@ end
 
 struct InitEvent <: SimEvent end
 
-function fire!(evt::InitEvent, physical, when, rng)
+@fire function fire!(evt::InitEvent, physical, when, rng)
     for pidx in eachindex(physical.actors)
         haunt_idx = rand(rng, 1:length(physical.actor_params[pidx].haunts))
         physical.actors[pidx].haunt = haunt_idx

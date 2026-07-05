@@ -61,7 +61,7 @@ function enable(evt::Spread, land, when)
     return (Weibull(2, scale), when)
 end
 
-function fire!(evt::Spread, land, when, rng)
+@fire function fire!(evt::Spread, land, when, rng)
     @obswrite land.mark[evt.destination] = 1
 end
 

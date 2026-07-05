@@ -131,7 +131,7 @@ end
 
 enable(evt::PickNewDestination, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::PickNewDestination, system, when, rng)
+@fire function fire!(evt::PickNewDestination, system, when, rng)
     who = system.person[evt.person]
     dests = Set(collect(1:system.floor_cnt))
     delete!(dests, system.person[evt.person].location)
@@ -155,7 +155,7 @@ end
 
 enable(evt::CallElevator, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::CallElevator, system, when, rng)
+@fire function fire!(evt::CallElevator, system, when, rng)
     person = system.person[evt.person]
     person.waiting = true
     direction = get_direction(person.location, person.destination)
@@ -190,7 +190,7 @@ end
 
 enable(evt::OpenElevatorDoors, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::OpenElevatorDoors, system, when, rng)
+@fire function fire!(evt::OpenElevatorDoors, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.doors_open = true
 
@@ -221,7 +221,7 @@ end
 
 enable(evt::EnterElevator, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::EnterElevator, system, when, rng)
+@fire function fire!(evt::EnterElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
 
     entered_cnt = 0
@@ -263,7 +263,7 @@ end
 
 enable(evt::ExitElevator, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::ExitElevator, system, when, rng)
+@fire function fire!(evt::ExitElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
 
     for pidx in 1:length(system.person)
@@ -319,7 +319,7 @@ end
 
 enable(evt::CloseElevatorDoors, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::CloseElevatorDoors, system, when, rng)
+@fire function fire!(evt::CloseElevatorDoors, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.doors_open = false
 end
@@ -358,7 +358,7 @@ end
 
 enable(evt::MoveElevator, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::MoveElevator, system, when, rng)
+@fire function fire!(evt::MoveElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.floor += elevator.direction == Up ? 1 : -1
 end
@@ -380,7 +380,7 @@ end
 
 enable(evt::StopElevator, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::StopElevator, system, when, rng)
+@fire function fire!(evt::StopElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.direction = Stationary
 end
@@ -409,7 +409,7 @@ end
 
 enable(evt::DispatchElevator, system, when) = (Exponential(1.0), when)
 
-function fire!(evt::DispatchElevator, system, when, rng)
+@fire function fire!(evt::DispatchElevator, system, when, rng)
     close_elev = 0
     close_dist = system.floor_cnt + 1
     for elev_idx in eachindex(system.elevator)
