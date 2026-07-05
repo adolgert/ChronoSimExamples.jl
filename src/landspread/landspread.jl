@@ -120,7 +120,7 @@ function landspread_likelihood(point_cnt)
         sampler = sampler,
         rng = rng
         )
-    how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector)
+    how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector).loglikelihood
     println("logpdf $how_likely")
 end
 end  # module LandSpread
