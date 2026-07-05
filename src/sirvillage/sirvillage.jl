@@ -409,6 +409,31 @@ function validate_invariants(physical)
     return err_msg
 end
 
+################ Declarative invariants (Phase 1d)
+#
+# Each former sub-check of validate_invariants is its own named @invariant: a
+# pure boolean function of the physical state. validate_invariants stays defined
+# for the old-vs-new regression test.
+
+@invariant "at least one strain" physical -> length(physical.strains) >= 1
+
+@invariant "strain rates nonnegative" function (physical)
+    all(s.infectivity >= 0.0 && s.virulence >= 0.0 for s in values(physical.strains))
+end
+
+@invariant "strain parent id valid" function (physical)
+    all(0 <= s.parent < physical.next_strain_id for s in values(physical.strains))
+end
+
+@invariant "location count matches roster" function (physical)
+    all(physical.locations[l].individual_cnt == length(physical.locations[l].individuals)
+        for l in eachindex(physical.locations))
+end
+
+@invariant "sick actor has strain" function (physical)
+    all(a.state == Susceptible || a.strain != 0 for a in physical.actors)
+end
+
 struct TrajectoryEntry
     event::Tuple
     when::Float64
@@ -424,13 +449,11 @@ function (te::TrajectorySave)(physical, when, event, changed_places)
     @info "Firing $event at $when"
     @info "Enabled events $(keys(te.sim.enabled_events))"
     push!(te.trajectory, TrajectoryEntry(clock_key(event), when))
-    err_str = vcat(validate_invariants(physical))
-    if !isempty(err_str)
-        error(join(err_str, "\n"))
-    end
+    # Invariant checking moved to the CheckInvariants policy (Phase 1d); pass
+    # `policy=CheckInvariants(SIRVillage)` to run_sirvillage to enable it.
 end
 
-function run_sirvillage()
+function run_sirvillage(; policy=ChronoSim.NoPolicy())
     person_cnt = 10
     location_cnt = 10
     day_length = 1.0
@@ -447,7 +470,7 @@ function run_sirvillage()
     ]
     trajectory = TrajectorySave()
     sim = SimulationFSM(
-        physical, included_transitions; rng=rng, observer=trajectory
+        physical, included_transitions; rng=rng, observer=trajectory, policy=policy
     )
     trajectory.sim = sim
     # Stop-condition is called after the next event is chosen but before the

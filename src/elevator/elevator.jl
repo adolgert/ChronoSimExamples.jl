@@ -247,6 +247,59 @@ function check_safety_invariant(physical::ElevatorSystem)
     return violations
 end
 
+################ Declarative invariants (Phase 1d)
+#
+# Each former sub-check of validate_type_invariant / check_safety_invariant is
+# its own named @invariant: a pure boolean function of the physical state. On
+# violation the CheckInvariants policy names the failing invariant and the
+# guilty address. The old validators above stay defined for the old-vs-new
+# regression test.
+
+@invariant "person location xor elevator" function (physical)
+    all((p.location > 0 && p.elevator == 0) || (p.location == 0 && p.elevator > 0)
+        for p in physical.person)
+end
+
+@invariant "person destination in range" function (physical)
+    all(1 <= p.destination <= physical.floor_cnt for p in physical.person)
+end
+
+@invariant "person elevator exists" function (physical)
+    all(p.elevator <= length(physical.elevator) for p in physical.person)
+end
+
+@invariant "elevator floor in range" function (physical)
+    all(1 <= e.floor <= physical.floor_cnt for e in physical.elevator)
+end
+
+@invariant "elevator buttons in range" function (physical)
+    all(all(1 <= b <= physical.floor_cnt for b in e.buttons_pressed)
+        for e in physical.elevator)
+end
+
+@invariant "pressed button has passenger" function (physical)
+    all(any(p.elevator == eidx && p.destination == b for p in physical.person)
+        for eidx in eachindex(physical.elevator)
+        for b in physical.elevator[eidx].buttons_pressed)
+end
+
+@invariant "passenger direction consistent" function (physical)
+    all(p.elevator == 0 ||
+        physical.elevator[p.elevator].floor == p.destination ||
+        physical.elevator[p.elevator].direction == Stationary ||
+        physical.elevator[p.elevator].direction ==
+            (p.destination > physical.elevator[p.elevator].floor ? Up : Down)
+        for p in physical.person)
+end
+
+@invariant "no ghost calls" function (physical)
+    all(!call.requested ||
+        any(p.location == floor_dirn[1] && p.waiting &&
+            (p.destination > p.location ? Up : Down) == floor_dirn[2]
+            for p in physical.person)
+        for (floor_dirn, call) in physical.calls)
+end
+
 ################# Events follow
 
 struct PickNewDestination <: SimEvent
@@ -730,14 +783,12 @@ function (te::TrajectorySave)(physical, when, event, changed_places)
     @info "Enabled events $(keys(te.sim.enabled_events))"
     # push!(te.trajectory, TrajectoryEntry(clock_key(event), when))
     println(physical)
-    err_str = vcat(validate_type_invariant(physical), check_safety_invariant(physical))
-    if !isempty(err_str)
-        error(join(err_str, "\n"))
-    end
+    # Invariant checking moved to the CheckInvariants policy (Phase 1d); pass
+    # `policy=CheckInvariants(ElevatorExample)` to run_elevator to enable it.
 end
 
 
-function run_elevator()
+function run_elevator(; policy=ChronoSim.NoPolicy())
     person_cnt = 1
     elevator_cnt = 1
     floor_cnt = 3
@@ -759,7 +810,8 @@ function run_elevator()
     @assert length(included_transitions) == 9
     trajectory = TrajectorySave()
     sim = SimulationFSM(
-        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934), observer=trajectory
+        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934),
+        observer=trajectory, policy=policy
     )
     trajectory.sim = sim
     # Stop-condition is called after the next event is chosen but before the

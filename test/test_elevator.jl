@@ -2,8 +2,11 @@ using Logging
 
 @testset "Elevator smoke" begin
     using ChronoSimExamples.ElevatorExample
+    using ChronoSim: CheckInvariants
+    # Debug policy on in tests (off by default in run_elevator): the CI smoke run
+    # checks every declared invariant after every fired event.
     with_logger(ConsoleLogger(stderr, Logging.Debug)) do
-        run_duration = ElevatorExample.run_elevator()
+        run_duration = ElevatorExample.run_elevator(policy=CheckInvariants(ElevatorExample))
         @assert run_duration > 9.9
     end
 end
