@@ -1,3 +1,14 @@
+# TEST FIXTURE for Phase 1e whynot acceptance scenario 2 (docs/design/phase1e_design.md).
+#
+# This is a MAINTAINED COPY of src/elevator/elevator_derived.jl (the @precondition
+# twin, so guard_clauses clause analysis is available) with ONE line deleted from
+# EnterElevator's fire!: the `elevator.buttons_pressed = union(...)` that presses
+# the boarding person's destination button. Without it a person boards but presses
+# no button, so an elevator that was never dispatched has no call and no button to
+# open its doors — OpenElevatorDoors on that instance stays PROPOSED BUT REJECTED
+# for the whole run, which `whynot` must diagnose. Keep this copy in sync with the
+# shipping derived module except for that one deletion.
+#
 # Derived-generator twin of ElevatorExample (src/elevator/elevator.jl).
 #
 # All 9 events have their generators derived from the precondition body via
@@ -37,7 +48,7 @@
 # Distinct struct types (parallel to ElevatorExample) are required. clock_key uses
 # nameof(type), so derived and hand-written events with the same name share clock
 # keys and their trajectories compare directly. TLA recorder parts are not ported.
-module ElevatorDerivedExample
+module ElevatorNoButton
 using CompetingClocks
 using CompetingClocks: CombinedNextReaction
 using Distributions
@@ -94,9 +105,7 @@ end
 
 ######## Helper functions
 
-# @fragment so the Quint compiler (Phase 4) can inline the body (`abs` has no Quint
-# stdlib form); behavior is byte-identical to the unmarked helper.
-@fragment get_distance(floor1, floor2) = abs(floor1 - floor2)
+get_distance(floor1, floor2) = abs(floor1 - floor2)
 
 # @fragment so preconditions may pass elevator/person state into these helpers; the
 # analysis inlines the registered body (runtime still calls the function unchanged).
@@ -133,7 +142,7 @@ end
 
 enable(evt::PickNewDestination, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::PickNewDestination, system, when, rng)
+function fire!(evt::PickNewDestination, system, when, rng)
     who = system.person[evt.person]
     dests = Set(collect(1:system.floor_cnt))
     delete!(dests, system.person[evt.person].location)
@@ -157,7 +166,7 @@ end
 
 enable(evt::CallElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::CallElevator, system, when, rng)
+function fire!(evt::CallElevator, system, when, rng)
     person = system.person[evt.person]
     person.waiting = true
     direction = get_direction(person.location, person.destination)
@@ -192,7 +201,7 @@ end
 
 enable(evt::OpenElevatorDoors, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::OpenElevatorDoors, system, when, rng)
+function fire!(evt::OpenElevatorDoors, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.doors_open = true
 
@@ -223,7 +232,7 @@ end
 
 enable(evt::EnterElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::EnterElevator, system, when, rng)
+function fire!(evt::EnterElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
 
     entered_cnt = 0
@@ -235,7 +244,9 @@ enable(evt::EnterElevator, system, when) = (Exponential(1.0), when)
                 person.location = 0
                 person.elevator = evt.elevator_idx
                 person.waiting = false
-                elevator.buttons_pressed = union(elevator.buttons_pressed, person.destination)
+                # DELETED for scenario 2: the boarding person presses no destination
+                # button, so a never-dispatched elevator never gets a reason to open.
+                # elevator.buttons_pressed = union(elevator.buttons_pressed, person.destination)
                 entered_cnt += 1
             end
         end
@@ -265,7 +276,7 @@ end
 
 enable(evt::ExitElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::ExitElevator, system, when, rng)
+function fire!(evt::ExitElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
 
     for pidx in 1:length(system.person)
@@ -321,7 +332,7 @@ end
 
 enable(evt::CloseElevatorDoors, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::CloseElevatorDoors, system, when, rng)
+function fire!(evt::CloseElevatorDoors, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.doors_open = false
 end
@@ -360,7 +371,7 @@ end
 
 enable(evt::MoveElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::MoveElevator, system, when, rng)
+function fire!(evt::MoveElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.floor += elevator.direction == Up ? 1 : -1
 end
@@ -382,7 +393,7 @@ end
 
 enable(evt::StopElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::StopElevator, system, when, rng)
+function fire!(evt::StopElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.direction = Stationary
 end
@@ -411,7 +422,7 @@ end
 
 enable(evt::DispatchElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::DispatchElevator, system, when, rng)
+function fire!(evt::DispatchElevator, system, when, rng)
     close_elev = 0
     close_dist = system.floor_cnt + 1
     for elev_idx in eachindex(system.elevator)

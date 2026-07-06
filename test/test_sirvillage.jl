@@ -31,7 +31,11 @@ using ChronoSimExamples: SIRVillage
         event_cnt[] += 1
         push!(fired, clock_key(event)[1])
     end
-    sim = SimulationFSM(physical, included; rng=rng, observer=observer)
+    # Debug policy on in tests: record a skeleton and check every declared
+    # invariant after every fired event (RecordSkeleton before CheckInvariants so
+    # a violation carries a replayable prefix).
+    policy = PolicyStack(RecordSkeleton(), CheckInvariants(SIRVillage))
+    sim = SimulationFSM(physical, included; rng=rng, observer=observer, policy=policy)
     stop_condition = (p, step_idx, event, when) -> when > days
     with_logger(ConsoleLogger(stderr, Logging.Warn)) do
         ChronoSim.run(sim, SIRVillage.InitEvent(), stop_condition)

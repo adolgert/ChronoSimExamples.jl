@@ -1,18 +1,19 @@
-# This implements a set of elevators and people interacting.
-# The spec comes from https://github.com/tlaplus/Examples which has
-# elevator.tla, the MODULE Elevator.
+# TEST FIXTURE for Phase 1e whynot acceptance scenario 1 (docs/design/phase1e_design.md).
 #
-# Run the .tla with `java -jar tla2tools.jar -config Elevator.cfg Elevator.tla`.
+# This is a MAINTAINED COPY of src/elevator/elevator.jl with the trigger fix that
+# commit 53c18d2 added to `@conditionsfor StopElevator` REVERTED: the three
+# @reactto blocks on elevator[elidx].direction, elevator[elidx].buttons_pressed,
+# and calls[callkey].requested are deleted, so StopElevator's declared triggers
+# revert to (floor, doors_open) — the historically unsound set. Dispatching an
+# elevator already at a boundary floor (which writes only `direction`) then can
+# never propose StopElevator, and `whynot` must diagnose it as NEVER PROPOSED.
 #
-# Contents
-#   1. Define physical state of the system.
-#   2. Helper functions that compute on that physical state.
-#   3. Validations of the physical state.
-#   4. All 9 event types.
-#   5. Initialization and observation of the simulation.
-#   6. Running the simulation.
+# The unmodified ElevatorDerivedExample (which derives all triggers) is the
+# oracle the acceptance test runs alongside, so drift in this copy is caught.
+# The @invariant declarations are kept but unused (scenario 1 does not check
+# invariants); they register only under this test-local module.
 #
-module ElevatorExample
+module ElevatorStopBug
 using CompetingClocks
 using CompetingClocks: CombinedNextReaction
 using Distributions
@@ -124,15 +125,13 @@ end
 ######## Helper functions
 
 get_distance(floor1, floor2) = abs(floor1 - floor2)
-# @fragment marks these helpers so a @guard precondition may pass state into them
-# for the footprint lint's read derivation (analysis-only; emitted verbatim).
-@fragment get_direction(current, destination) = destination > current ? Up : Down
-@fragment function can_service_call(elevator, call_floor, call_dirn)
+get_direction(current, destination) = destination > current ? Up : Down
+function can_service_call(elevator, call_floor, call_dirn)
     elevator.floor == call_floor && elevator.direction == call_dirn
 end
 
 
-@fragment function people_waiting(people, floor, dirn)
+function people_waiting(people, floor, dirn)
     waiters = Int[]
     for pidx in eachindex(people)
         p = people[pidx]
@@ -315,14 +314,14 @@ end
     end
 end
 
-@guard function precondition(evt::PickNewDestination, system)
+function precondition(evt::PickNewDestination, system)
     person = system.person[evt.person]
     return !person.waiting && person.location != 0
 end
 
 enable(evt::PickNewDestination, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::PickNewDestination, system, when, rng)
+function fire!(evt::PickNewDestination, system, when, rng)
     who = system.person[evt.person]
     dests = Set(collect(1:system.floor_cnt))
     delete!(dests, system.person[evt.person].location)
@@ -339,7 +338,7 @@ end
     end
 end
 
-@guard function precondition(evt::CallElevator, system)
+function precondition(evt::CallElevator, system)
     person = system.person[evt.person]
     # The location != 0 guard makes the precondition self-contained rather than
     # relying on the narrowness of the destination-only trigger to avoid the
@@ -352,7 +351,7 @@ end
 
 enable(evt::CallElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::CallElevator, system, when, rng)
+function fire!(evt::CallElevator, system, when, rng)
     person = system.person[evt.person]
     person.waiting = true
     direction = get_direction(person.location, person.destination)
@@ -398,7 +397,7 @@ end
     end
 end
 
-@guard function precondition(evt::OpenElevatorDoors, system)
+function precondition(evt::OpenElevatorDoors, system)
     elevator = system.elevator[evt.elevator_idx]
 
     # This is a faster way to say there exists a call this elevator can service,
@@ -414,7 +413,7 @@ end
 
 enable(evt::OpenElevatorDoors, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::OpenElevatorDoors, system, when, rng)
+function fire!(evt::OpenElevatorDoors, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.doors_open = true
 
@@ -443,7 +442,7 @@ end
     end
 end
 
-@guard function precondition(evt::EnterElevator, system)
+function precondition(evt::EnterElevator, system)
     elevator = system.elevator[evt.elevator_idx]
     elevator_ready = (elevator.doors_open && elevator.direction != Stationary)
     people_ready = !isempty(people_waiting(system.person, elevator.floor, elevator.direction))
@@ -452,7 +451,7 @@ end
 
 enable(evt::EnterElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::EnterElevator, system, when, rng)
+function fire!(evt::EnterElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
 
     # Find all people who can enter
@@ -492,7 +491,7 @@ end
     end
 end
 
-@guard function precondition(evt::ExitElevator, system)
+function precondition(evt::ExitElevator, system)
     elevator = system.elevator[evt.elevator_idx]
 
     # Check if anyone in this elevator wants to exit at this floor
@@ -509,7 +508,7 @@ end
 
 enable(evt::ExitElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::ExitElevator, system, when, rng)
+function fire!(evt::ExitElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
 
     for pidx in 1:length(system.person)
@@ -540,7 +539,7 @@ end
     end
 end
 
-@guard function precondition(evt::CloseElevatorDoors, system)
+function precondition(evt::CloseElevatorDoors, system)
     elevator = system.elevator[evt.elevator_idx]
 
     # No one can enter or exit
@@ -575,7 +574,7 @@ end
 
 enable(evt::CloseElevatorDoors, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::CloseElevatorDoors, system, when, rng)
+function fire!(evt::CloseElevatorDoors, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.doors_open = false
 end
@@ -605,7 +604,7 @@ end
     end
 end
 
-@guard function precondition(evt::MoveElevator, system)
+function precondition(evt::MoveElevator, system)
     elevator = system.elevator[evt.elevator_idx]
     next_floor = elevator.direction == Up ? elevator.floor + 1 : elevator.floor - 1
     next_floor_valid = next_floor >= 1 && next_floor <= system.floor_cnt
@@ -637,7 +636,7 @@ end
 
 enable(evt::MoveElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::MoveElevator, system, when, rng)
+function fire!(evt::MoveElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.floor += elevator.direction == Up ? 1 : -1
 end
@@ -654,31 +653,12 @@ end
     @reactto changed(elevator[elidx].doors_open) do system
         generate(StopElevator(elidx))
     end
-    # Without this trigger, dispatching an elevator that already sits at a
-    # boundary floor can never stop it: the precondition's next_floor check
-    # reads direction, DispatchElevator writes only direction, and the depnet
-    # holds no edges for a disabled event. Found because the derived
-    # generators (which trigger on every precondition read) fired
-    # StopElevator here and the trajectories diverged.
-    @reactto changed(elevator[elidx].direction) do system
-        generate(StopElevator(elidx))
-    end
-    # The doors_will_open term reads the calls dict and the button set, so a
-    # new call (CallElevator fires while this elevator idles at a boundary
-    # floor) or a button change can newly enable a stop. Same rebirth gap as
-    # doors_open on OpenElevatorDoors, found by trajectory divergence against
-    # the derived generators.
-    @reactto changed(elevator[elidx].buttons_pressed) do system
-        generate(StopElevator(elidx))
-    end
-    @reactto changed(calls[callkey].requested) do system
-        for elidx in 1:length(system.elevator)
-            generate(StopElevator(elidx))
-        end
-    end
+    # REVERTED (commit 53c18d2): the direction / buttons_pressed / calls triggers
+    # that made this set sound are deliberately omitted here so whynot can
+    # diagnose the missing-trigger bug. Do not re-add them in this fixture.
 end
 
-@guard function precondition(evt::StopElevator, system)
+function precondition(evt::StopElevator, system)
     elevator = system.elevator[evt.elevator_idx]
     next_floor = elevator.direction == Up ? elevator.floor + 1 : elevator.floor - 1
     next_floor_valid = 1 <= next_floor <= system.floor_cnt
@@ -688,7 +668,7 @@ end
 
 enable(evt::StopElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::StopElevator, system, when, rng)
+function fire!(evt::StopElevator, system, when, rng)
     elevator = system.elevator[evt.elevator_idx]
     elevator.direction = Stationary
 end
@@ -716,7 +696,7 @@ end
     end
 end
 
-@guard function precondition(evt::DispatchElevator, system)
+function precondition(evt::DispatchElevator, system)
     # Call must exist and be active
     call_active = system.calls[(evt.floor, evt.direction)].requested
     any_stationary = any(elevator.direction == Stationary for elevator in system.elevator)
@@ -730,7 +710,7 @@ end
 
 enable(evt::DispatchElevator, system, when) = (Exponential(1.0), when)
 
-@fire function fire!(evt::DispatchElevator, system, when, rng)
+function fire!(evt::DispatchElevator, system, when, rng)
     close_elev = 0
     close_dist = system.floor_cnt + 1
     for elev_idx in eachindex(system.elevator)
@@ -826,10 +806,6 @@ function run_elevator(; policy=ChronoSim.NoPolicy())
     return sim.when
 end
 
-# The bespoke TLA+/TLC trace glue (TLATraceRecorder, run_with_trace) was retired in
-# Phase 4: the generic `ChronoSim.compile_quint` + `validate_trace` path validates the
-# same elevator trajectory class the TLC glue checked (see test/test_quint.jl), and its
-# tla2tools.jar shell-out was never present on CI. The machinery is preserved under
-# `attic/elevatortla.jl`; `Elevator.tla` stays here as provenance documentation.
+# (elevatortla.jl include and run_with_trace removed: not needed by the fixture.)
 
 end

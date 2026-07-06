@@ -2,6 +2,7 @@ module LandSpread
 
 using ChronoSim
 using CompetingClocks
+using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using ChronoSim.ObservedState
 using Distributions
@@ -46,7 +47,7 @@ end
     end
 end
 
-function precondition(evt::Spread, land)
+@guard function precondition(evt::Spread, land)
     @obsread land.mark[evt.source]
     @obsread land.mark[evt.destination]
     return evt.source != evt.destination &&
@@ -60,7 +61,7 @@ function enable(evt::Spread, land, when)
     return (Weibull(2, scale), when)
 end
 
-function fire!(evt::Spread, land, when, rng)
+@fire function fire!(evt::Spread, land, when, rng)
     @obswrite land.mark[evt.destination] = 1
 end
 
@@ -119,7 +120,7 @@ function landspread_likelihood(point_cnt)
         sampler = sampler,
         rng = rng
         )
-    how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector)
+    how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector).loglikelihood
     println("logpdf $how_likely")
 end
 end  # module LandSpread

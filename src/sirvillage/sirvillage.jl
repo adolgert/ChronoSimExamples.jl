@@ -160,7 +160,7 @@ struct Travel <: SimEvent
     who::Int64
 end
 
-precondition(event::Travel, physical) = true
+@guard precondition(event::Travel, physical) = true
 
 @conditionsfor Travel begin
     @reactto changed(actors[who].haunt) do physical
@@ -176,7 +176,7 @@ function enable(evt::Travel, physical, when)
     return (Weibull(2, scale), when)
 end
 
-function fire!(evt::Travel, physical, when, rng)
+@fire function fire!(evt::Travel, physical, when, rng)
     source_haunt = physical.actors[evt.who].haunt
     source_loc = physical.actor_params[evt.who].haunts[source_haunt]
     # Use a mask to eliminate travel to the place you started.
@@ -199,7 +199,7 @@ struct Infect <: SimEvent
     sink::Int64
 end
 
-function precondition(evt::Infect, physical)
+@guard function precondition(evt::Infect, physical)
     source_state = physical.actors[evt.source].state
     source_haunt = physical.actors[evt.source].haunt
     source_loc = physical.actor_params[evt.source].haunts[source_haunt]
@@ -252,7 +252,7 @@ function enable(evt::Infect, physical, when)
     return (Exponential(inv(infectivity / robust)), when)
 end
 
-function fire!(evt::Infect, physical, when, rng)
+@fire function fire!(evt::Infect, physical, when, rng)
     strain_idx = physical.actors[evt.source].strain
     physical.actors[evt.sink].strain = strain_idx
     physical.actors[evt.sink].state = Infectious
@@ -263,7 +263,7 @@ struct Recover <: SimEvent
     who::Int64
 end
 
-precondition(evt::Recover, physical) = physical.actors[evt.who].state == Infectious
+@guard precondition(evt::Recover, physical) = physical.actors[evt.who].state == Infectious
 
 @conditionsfor Recover begin
     @reactto changed(actors[who].state) do physical
@@ -279,7 +279,7 @@ function enable(evt::Recover, physical, when)
     return (Gamma(3, inv(robust / virulence)), when)
 end
 
-function fire!(evt::Recover, physical, when, rng)
+@fire function fire!(evt::Recover, physical, when, rng)
     physical.actors[evt.who].state = Recovered
 end
 
@@ -288,7 +288,7 @@ struct Reset <: SimEvent
     who::Int64
 end
 
-precondition(evt::Reset, physical) = physical.actors[evt.who].state == Recovered
+@guard precondition(evt::Reset, physical) = physical.actors[evt.who].state == Recovered
 
 @conditionsfor Reset begin
     @reactto changed(actors[who].state) do physical
@@ -300,7 +300,7 @@ function enable(evt::Reset, physical, when)
     return (Exponential(inv(0.05)), when)
 end
 
-function fire!(evt::Reset, physical, when, rng)
+@fire function fire!(evt::Reset, physical, when, rng)
     physical.actors[evt.who].state = Susceptible
     physical.actors[evt.who].strain = 0
 end
@@ -314,7 +314,7 @@ struct Mutate <: SimEvent
     carrier::Int64
 end
 
-function precondition(evt::Mutate, physical)
+@guard function precondition(evt::Mutate, physical)
     return physical.actors[evt.carrier].state == Infectious
 end
 
@@ -329,7 +329,7 @@ function enable(evt::Mutate, physical, when)
     return (Exponential(inv(mutate_rate)), when)
 end
 
-function fire!(evt::Mutate, physical, when, rng)
+@fire function fire!(evt::Mutate, physical, when, rng)
     strain_idx = physical.actors[evt.carrier].strain
     # Use log space to ensure rates remain positive.
     infectivity = log(physical.strains[strain_idx].infectivity)
@@ -350,7 +350,7 @@ end
 
 struct InitEvent <: SimEvent end
 
-function fire!(evt::InitEvent, physical, when, rng)
+@fire function fire!(evt::InitEvent, physical, when, rng)
     for pidx in eachindex(physical.actors)
         haunt_idx = rand(rng, 1:length(physical.actor_params[pidx].haunts))
         physical.actors[pidx].haunt = haunt_idx
@@ -409,6 +409,31 @@ function validate_invariants(physical)
     return err_msg
 end
 
+################ Declarative invariants (Phase 1d)
+#
+# Each former sub-check of validate_invariants is its own named @invariant: a
+# pure boolean function of the physical state. validate_invariants stays defined
+# for the old-vs-new regression test.
+
+@invariant "at least one strain" physical -> length(physical.strains) >= 1
+
+@invariant "strain rates nonnegative" function (physical)
+    all(s.infectivity >= 0.0 && s.virulence >= 0.0 for s in values(physical.strains))
+end
+
+@invariant "strain parent id valid" function (physical)
+    all(0 <= s.parent < physical.next_strain_id for s in values(physical.strains))
+end
+
+@invariant "location count matches roster" function (physical)
+    all(physical.locations[l].individual_cnt == length(physical.locations[l].individuals)
+        for l in eachindex(physical.locations))
+end
+
+@invariant "sick actor has strain" function (physical)
+    all(a.state == Susceptible || a.strain != 0 for a in physical.actors)
+end
+
 struct TrajectoryEntry
     event::Tuple
     when::Float64
@@ -424,13 +449,11 @@ function (te::TrajectorySave)(physical, when, event, changed_places)
     @info "Firing $event at $when"
     @info "Enabled events $(keys(te.sim.enabled_events))"
     push!(te.trajectory, TrajectoryEntry(clock_key(event), when))
-    err_str = vcat(validate_invariants(physical))
-    if !isempty(err_str)
-        error(join(err_str, "\n"))
-    end
+    # Invariant checking moved to the CheckInvariants policy (Phase 1d); pass
+    # `policy=CheckInvariants(SIRVillage)` to run_sirvillage to enable it.
 end
 
-function run_sirvillage()
+function run_sirvillage(; policy=ChronoSim.NoPolicy())
     person_cnt = 10
     location_cnt = 10
     day_length = 1.0
@@ -447,7 +470,7 @@ function run_sirvillage()
     ]
     trajectory = TrajectorySave()
     sim = SimulationFSM(
-        physical, included_transitions; rng=rng, observer=trajectory
+        physical, included_transitions; rng=rng, observer=trajectory, policy=policy
     )
     trajectory.sim = sim
     # Stop-condition is called after the next event is chosen but before the

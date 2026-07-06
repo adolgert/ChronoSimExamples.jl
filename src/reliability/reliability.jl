@@ -2,6 +2,7 @@ module ReliabilitySim
 using ChronoSim
 using ChronoSim.ObservedState
 using CompetingClocks
+using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using Distributions
 using Random
@@ -50,7 +51,7 @@ worker_cnt(physical::IndividualState) = length(physical.actors)
 
 struct StartDay <: SimEvent end
 
-precondition(event::StartDay, physical) = true
+@guard precondition(event::StartDay, physical) = true
 
 @conditionsfor StartDay begin
     @reactto changed(actors[i].state) do physical
@@ -64,7 +65,7 @@ function enable(evt::StartDay, physical, when)
     return (Dirac(interval), when)
 end
 
-function fire!(evt::StartDay, physical, when, rng)
+@fire function fire!(evt::StartDay, physical, when, rng)
     crew_cnt = 0
     for car in eachindex(physical.actors)
         if physical.actors[car].state == ready
@@ -82,7 +83,7 @@ struct EndDay <: SimEvent
     actor_idx::Int
 end
 
-precondition(evt::EndDay, physical) = physical.actors[evt.actor_idx].state == working
+@guard precondition(evt::EndDay, physical) = physical.actors[evt.actor_idx].state == working
 
 @conditionsfor EndDay begin
     @reactto changed(actors[actor].state) do physical
@@ -94,7 +95,7 @@ function enable(evt::EndDay, physical, when)
     return (physical.params[evt.actor_idx].done_dist, when)
 end
 
-function fire!(evt::EndDay, physical, when, rng)
+@fire function fire!(evt::EndDay, physical, when, rng)
     physical.actors[evt.actor_idx].state = ready
     started_work = physical.actors[evt.actor_idx].started_working_time
     physical.actors[evt.actor_idx].work_age += when - started_work
@@ -105,7 +106,7 @@ struct Break <: SimEvent
     actor_idx::Int
 end
 
-precondition(evt::Break, physical) = physical.actors[evt.actor_idx].state == working
+@guard precondition(evt::Break, physical) = physical.actors[evt.actor_idx].state == working
 
 @conditionsfor Break begin
     @reactto changed(actors[actor].state) do physical
@@ -119,7 +120,7 @@ function enable(evt::Break, physical, when)
     return (physical.params[evt.actor_idx].fail_dist, started_ago)
 end
 
-function fire!(evt::Break, physical, when, rng)
+@fire function fire!(evt::Break, physical, when, rng)
     physical.actors[evt.actor_idx].state = broken
     started_work = physical.actors[evt.actor_idx].started_working_time
     physical.actors[evt.actor_idx].work_age += when - started_work
@@ -129,7 +130,7 @@ struct Repair <: SimEvent
     actor_idx::Int
 end
 
-precondition(evt::Repair, physical) = physical.actors[evt.actor_idx].state == broken
+@guard precondition(evt::Repair, physical) = physical.actors[evt.actor_idx].state == broken
 
 @conditionsfor Repair begin
     @reactto changed(actors[actor].state) do physical
@@ -141,7 +142,7 @@ function enable(evt::Repair, physical, when)
     return (physical.params[evt.actor_idx].repair_dist, when)
 end
 
-function fire!(evt::Repair, physical, when, rng)
+@fire function fire!(evt::Repair, physical, when, rng)
     physical.actors[evt.actor_idx].state = ready
     physical.actors[evt.actor_idx].work_age = 0.0
 end
