@@ -39,7 +39,6 @@
 # keys and their trajectories compare directly. TLA recorder parts are not ported.
 module ElevatorDerivedExample
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Distributions
 using Logging
 using Random
@@ -451,7 +450,6 @@ function run_elevator_derived()
     elevator_cnt = 1
     floor_cnt = 3
     minutes = 120.0
-    Sampler = CombinedNextReaction{Tuple,Float64}
     physical = ElevatorSystem(person_cnt, elevator_cnt, floor_cnt)
     included_transitions = [
         PickNewDestination,
@@ -466,7 +464,8 @@ function run_elevator_derived()
     ]
     @assert length(included_transitions) == 9
     sim = SimulationFSM(
-        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934)
+        physical, included_transitions; sampler=NextReactionMethod(), key_type=Tuple,
+        rng=Xoshiro(93472934)
     )
     stop_condition = function (physical, step_idx, event, when)
         return when > minutes

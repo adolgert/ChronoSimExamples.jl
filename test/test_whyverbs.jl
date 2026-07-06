@@ -13,7 +13,6 @@ using ChronoSim: InvariantViolation, CheckInvariants, PolicyStack, RecordSkeleto
     recorded_skeleton, clock_key
 using ChronoSim.ObservedState
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Distributions
 using Logging
 using Random
@@ -39,7 +38,7 @@ _elev_events(M) = [M.PickNewDestination, M.CallElevator, M.OpenElevatorDoors,
     # (a) The unmodified derived twin: discover the first StopElevator step.
     recd = RecordSkeleton()
     simd = SimulationFSM(_ED.ElevatorSystem(P, E, F), _elev_events(_ED);
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=recd)
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=recd)
     ChronoSim.run(simd, _ED.init_physical, (p, i, e, w) -> w > 120.0)
     skeld = recorded_skeleton(recd)
     s = findfirst(st -> st.clock[1] == :StopElevator, skeld.steps)
@@ -51,11 +50,11 @@ _elev_events(M) = [M.PickNewDestination, M.CallElevator, M.OpenElevatorDoors,
     # precondition holds there by construction, yet nothing ever proposed it.
     recb = RecordSkeleton()
     simb = SimulationFSM(_SB.ElevatorSystem(P, E, F), _elev_events(_SB);
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=recb)
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=recb)
     ChronoSim.run(simb, _SB.init_physical, (p, i, e, w) -> i >= s)
     skelb = recorded_skeleton(recb)
     factory = policy -> (SimulationFSM(_SB.ElevatorSystem(P, E, F), _elev_events(_SB);
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=policy),
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=policy),
         _SB.init_physical)
 
     rep = whynot(skelb, factory, _SB.StopElevator(k))
@@ -79,7 +78,7 @@ end
     seed = 93472934
     rec = RecordSkeleton()
     sim = SimulationFSM(_NB.ElevatorSystem(1, 2, 5), _elev_events(_NB);
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=rec)
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=rec)
     ChronoSim.run(sim, _NB.init_physical, (p, i, e, w) -> w > 60.0)
     skel = recorded_skeleton(rec)
 
@@ -95,7 +94,7 @@ end
     k_other = 3 - k_open
 
     factory = policy -> (SimulationFSM(_NB.ElevatorSystem(1, 2, 5), _elev_events(_NB);
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=policy),
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=policy),
         _NB.init_physical)
 
     rep = whynot(skel, factory, _NB.OpenElevatorDoors(k_other))
@@ -185,7 +184,7 @@ end # module
     transitions = vcat(_elev_events(ElevatorExample), WhyVerbsCorrupt.CorruptPerson)
     rec = RecordSkeleton()
     sim = SimulationFSM(physical, transitions;
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(93472934),
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(93472934),
         policy=PolicyStack(rec, CheckInvariants(ElevatorExample)))
     err = try
         with_logger(ConsoleLogger(stderr, Logging.Warn)) do

@@ -2,7 +2,6 @@ module LandSpread
 
 using ChronoSim
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using ChronoSim.ObservedState
 using Distributions
@@ -113,11 +112,11 @@ function landspread_likelihood(point_cnt)
     popfirst!(event_vector)  # Get rid of the InitializeEvent.
     rng = Xoshiro(9437294723)
     land = Landscape(point_cnt, rng)
-    sampler = CompetingClocks.MemorySampler(CombinedNextReaction{Tuple,Float64}())
     sim = SimulationFSM(
         land,
         [Spread];
-        sampler = sampler,
+        sampler = NextReactionMethod(), key_type = Tuple,
+        step_likelihood = true,
         rng = rng
         )
     how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector).loglikelihood

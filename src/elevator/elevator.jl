@@ -14,7 +14,6 @@
 #
 module ElevatorExample
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Distributions
 using Logging
 using Random
@@ -796,7 +795,6 @@ function run_elevator(; policy=ChronoSim.NoPolicy())
     floor_cnt = 3
     minutes = 120.0
     ClockKey=Tuple
-    Sampler = CombinedNextReaction{ClockKey,Float64}
     physical = ElevatorSystem(person_cnt, elevator_cnt, floor_cnt)
     included_transitions = [
         PickNewDestination,
@@ -812,8 +810,8 @@ function run_elevator(; policy=ChronoSim.NoPolicy())
     @assert length(included_transitions) == 9
     trajectory = TrajectorySave()
     sim = SimulationFSM(
-        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934),
-        observer=trajectory, policy=policy
+        physical, included_transitions; sampler=NextReactionMethod(), key_type=ClockKey,
+        rng=Xoshiro(93472934), observer=trajectory, policy=policy
     )
     trajectory.sim = sim
     # Stop-condition is called after the next event is chosen but before the

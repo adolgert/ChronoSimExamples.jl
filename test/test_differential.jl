@@ -9,7 +9,6 @@
 
 using ChronoSim
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Random
 using Test
 
@@ -51,7 +50,7 @@ function _reliability_trajectory(M; days=10.0, seed=2947223, oracle=false)
         physical,
         included;
         rng=Xoshiro(seed),
-        sampler=CombinedNextReaction{Tuple,Float64}(),
+        sampler=NextReactionMethod(), key_type=Tuple,
         observer=observer,
         policy=policy,
     )
@@ -81,7 +80,7 @@ function _elevator_trajectory(M; minutes=120.0, seed=93472934, oracle=false)
         physical,
         included;
         rng=Xoshiro(seed),
-        sampler=CombinedNextReaction{Tuple,Float64}(),
+        sampler=NextReactionMethod(), key_type=Tuple,
         observer=observer,
         policy=policy,
     )
