@@ -1,4 +1,16 @@
-module ReliabilitySim
+# Derived-generator twin of ReliabilitySim (src/reliability/reliability.jl).
+#
+# Same physical state, events, enable/fire!/rates. The difference: worker-event
+# preconditions (EndDay, Break, Repair) are declared with `@precondition`, which
+# derives their place-triggered generators from the precondition body — the
+# hand-written `@conditionsfor` blocks for those events are deleted. StartDay keeps
+# its manual generators because its precondition is `true` (reads no physical
+# state), which is out of the derivable fragment.
+#
+# Distinct struct types (parallel to ReliabilitySim) are required: generators() is
+# one method per event type. clock_key uses nameof(type), so a derived EndDay and a
+# hand-written EndDay share the same clock key — differential trajectories compare.
+module ReliabilityDerivedSim
 using ChronoSim
 using ChronoSim.ObservedState
 using CompetingClocks
@@ -7,11 +19,10 @@ import ChronoSim: generators, precondition, enable, reenable, fire!
 using Distributions
 using Random
 
-export run_reliability
+export run_reliability_derived
 
 @enum Activity ready working broken
 
-# Using keyedby says the fields of this struct can be used to track events.
 @keyedby Individual Int64 begin
     state::Activity
     work_age::Float64
@@ -24,7 +35,6 @@ struct IndividualParams
     repair_dist::Weibull
 end
 
-# This is the physical state of the system. It will report its reads and writes.
 @observedphysical IndividualState begin
     actors::ObservedVector{Individual,Member}
     params::Vector{IndividualParams}
@@ -32,9 +42,8 @@ end
     start_time::Float64
 end
 
-
 function IndividualState(actor_cnt, crew_size)
-    done_rate = LogUniform(.8, 0.99) # Gamma(9.0, 0.2)
+    done_rate = LogUniform(.8, 0.99)
     break_rate = LogNormal(1.5, 0.4)
     repair_rate = Weibull(1.0, 2.0)
     p = IndividualParams(done_rate, break_rate, repair_rate)
@@ -51,7 +60,9 @@ worker_cnt(physical::IndividualState) = length(physical.actors)
 
 struct StartDay <: SimEvent end
 
-@guard precondition(event::StartDay, physical) = true
+# stays manual: precondition is `true`, so it reads no physical state and
+# @precondition cannot derive a trigger from it.
+precondition(event::StartDay, physical) = true
 
 @conditionsfor StartDay begin
     @reactto changed(actors[i].state) do physical
@@ -83,12 +94,11 @@ struct EndDay <: SimEvent
     actor_idx::Int
 end
 
-@guard precondition(evt::EndDay, physical) = physical.actors[evt.actor_idx].state == working
-
-@conditionsfor EndDay begin
-    @reactto changed(actors[actor].state) do physical
-        generate(EndDay(actor))
-    end
+# Derived: the single clean read actors[evt.actor_idx].state binds actor_idx, so
+# the trigger [actors, ℤ, state] is equivalent to the hand-written
+# `changed(actors[actor].state) -> EndDay(actor)`. No @domain needed.
+@precondition function precondition(evt::EndDay, physical)
+    return physical.actors[evt.actor_idx].state == working
 end
 
 function enable(evt::EndDay, physical, when)
@@ -101,17 +111,12 @@ end
     physical.actors[evt.actor_idx].work_age += when - started_work
 end
 
-
 struct Break <: SimEvent
     actor_idx::Int
 end
 
-@guard precondition(evt::Break, physical) = physical.actors[evt.actor_idx].state == working
-
-@conditionsfor Break begin
-    @reactto changed(actors[actor].state) do physical
-        generate(Break(actor))
-    end
+@precondition function precondition(evt::Break, physical)
+    return physical.actors[evt.actor_idx].state == working
 end
 
 function enable(evt::Break, physical, when)
@@ -130,12 +135,8 @@ struct Repair <: SimEvent
     actor_idx::Int
 end
 
-@guard precondition(evt::Repair, physical) = physical.actors[evt.actor_idx].state == broken
-
-@conditionsfor Repair begin
-    @reactto changed(actors[actor].state) do physical
-        generate(Repair(actor))
-    end
+@precondition function precondition(evt::Repair, physical)
+    return physical.actors[evt.actor_idx].state == broken
 end
 
 function enable(evt::Repair, physical, when)
@@ -149,53 +150,25 @@ end
 
 function initialize!(physical::PhysicalState, rng)
     for idx in eachindex(physical.actors)
-        # This is a warm start to the problem.
         physical.actors[idx].work_age = rand(rng, Uniform(0, 10))
         physical.actors[idx].state = ready
     end
 end
 
-
-
-struct TrajectoryEntry
-    event::Tuple
-    when::Float64
-end
-
-struct TrajectorySave
-    trajectory::Vector{TrajectoryEntry}
-    TrajectorySave() = new(Vector{TrajectoryEntry}())
-end
-
-function (ts::TrajectorySave)(physical, when, event, changed_places)
-    @debug "Firing $event at $when"
-    push!(ts.trajectory, TrajectoryEntry(clock_key(event), when))
-end
-
-
-function run_reliability(days)
+function run_reliability_derived(days)
     agent_cnt = 15
     Sampler = CombinedNextReaction{Tuple,Float64}
     physical = IndividualState(agent_cnt, 10)
-    included_transitions = [
-        StartDay,
-        EndDay,
-        Break,
-        Repair
-    ]
-    trajectory = TrajectorySave()
+    included_transitions = [StartDay, EndDay, Break, Repair]
     sim = SimulationFSM(
         physical,
         included_transitions;
         rng=Xoshiro(2947223),
-        observer=trajectory,
         sampler=Sampler()
     )
     initializer = function(init_physical, when, rng)
         initialize!(init_physical, rng)
     end
-    # Stop-condition is called after the next event is chosen but before the
-    # next event is fired. This way you can stop at an end time between events.
     stop_condition = function(physical, step_idx, event, when)
         return when > days
     end
@@ -203,9 +176,4 @@ function run_reliability(days)
     return sim.when
 end
 
-end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    using .ReliabilitySim
-    run_reliability(5.0)
 end
