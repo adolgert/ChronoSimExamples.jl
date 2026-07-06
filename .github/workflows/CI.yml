@@ -35,16 +35,16 @@ jobs:
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # The Manifest points at sibling working-tree checkouts
       # (/home/adolgert/dev/...), which do not exist on a runner. Check the
       # siblings out and re-develop them by path before building.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: adolgert/ChronoSim.jl
           ref: dev/verification
           path: deps/ChronoSim.jl
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: adolgert/CompetingClocks.jl
           path: deps/CompetingClocks.jl
@@ -75,13 +75,13 @@ jobs:
       actions: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           repository: adolgert/ChronoSim.jl
           ref: dev/verification
           path: deps/ChronoSim.jl
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: adolgert/CompetingClocks.jl
           path: deps/CompetingClocks.jl
@@ -130,7 +130,7 @@ jobs:
       contents: write
       statuses: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
