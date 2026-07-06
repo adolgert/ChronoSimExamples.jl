@@ -2,7 +2,6 @@ using ChronoSim
 using ChronoSim: module_invariants, CheckInvariants, InvariantViolation, PolicyStack,
     RecordSkeleton, clock_key, NoPolicy
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Distributions
 using Logging
 using Random
@@ -84,7 +83,7 @@ end
     rec = RecordSkeleton()
     sim = SimulationFSM(
         physical, transitions;
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(93472934),
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(93472934),
         policy=PolicyStack(rec, CheckInvariants(ElevatorExample)),
     )
     stop = (p, i, e, w) -> w > 120.0

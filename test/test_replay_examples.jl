@@ -7,7 +7,6 @@
 using ChronoSim
 using ChronoSim: ProbePolicy
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Random
 using Test
 using Logging
@@ -28,7 +27,7 @@ function _record_elevator(; person=1, elevator=1, floors=3, minutes=120.0, seed=
     physical = ED.ElevatorSystem(person, elevator, floors)
     rec = RecordSkeleton(; metadata=(model="elevator", seed=seed))
     sim = SimulationFSM(physical, _ELEV_EVENTS;
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=rec)
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=rec)
     stop = (p, i, e, w) -> w > minutes
     ChronoSim.run(sim, ED.init_physical, stop)
     return recorded_skeleton(rec)
@@ -37,7 +36,7 @@ end
 function _elevator_factory(policy; person=1, elevator=1, floors=3, seed=93472934)
     physical = ED.ElevatorSystem(person, elevator, floors)
     sim = SimulationFSM(physical, _ELEV_EVENTS;
-        sampler=CombinedNextReaction{Tuple,Float64}(), rng=Xoshiro(seed), policy=policy)
+        sampler=NextReactionMethod(), key_type=Tuple, rng=Xoshiro(seed), policy=policy)
     return (sim, ED.init_physical)
 end
 

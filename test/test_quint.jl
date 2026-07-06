@@ -7,7 +7,7 @@
 using ChronoSim
 using ChronoSim: compile_quint, validate_trace, QuintCompileError, find_quint_toolchain
 using Random
-using CompetingClocks: CombinedNextReaction
+using CompetingClocks: NextReactionMethod
 import ChronoSim
 
 const _QTC = find_quint_toolchain()
@@ -99,7 +99,7 @@ end
 function _elev_factory(policy)
     E = _QElev.E
     phys = E.ElevatorSystem(3, 2, 5)
-    sim = SimulationFSM(phys, _QElev.EVENTS; sampler=CombinedNextReaction{Tuple,Float64}(),
+    sim = SimulationFSM(phys, _QElev.EVENTS; sampler=NextReactionMethod(), key_type=Tuple,
         rng=Xoshiro(93472934), policy=policy)
     (sim, E.init_physical)
 end

@@ -5,7 +5,6 @@
 
 using ChronoSim
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Random
 using Test
 using Logging

@@ -8,7 +8,6 @@
 
 using ChronoSim
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 using Random
 using Test
 
@@ -38,7 +37,7 @@ function _run_reliability(M; days=10.0, seed=2947223)
         physical,
         included;
         rng=Xoshiro(seed),
-        sampler=CombinedNextReaction{Tuple,Float64}(),
+        sampler=NextReactionMethod(), key_type=Tuple,
     )
     initializer = (init_physical, when, rng) -> M.initialize!(init_physical, rng)
     stop_condition = (p, step_idx, event, when) -> when > days
@@ -63,7 +62,7 @@ function _run_elevator(M; minutes=120.0, seed=93472934)
         physical,
         included;
         rng=Xoshiro(seed),
-        sampler=CombinedNextReaction{Tuple,Float64}(),
+        sampler=NextReactionMethod(), key_type=Tuple,
     )
     stop_condition = (p, step_idx, event, when) -> when > minutes
     ChronoSim.run(sim, M.init_physical, stop_condition)

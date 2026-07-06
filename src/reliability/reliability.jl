@@ -2,7 +2,6 @@ module ReliabilitySim
 using ChronoSim
 using ChronoSim.ObservedState
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using Distributions
 using Random
@@ -175,7 +174,6 @@ end
 
 function run_reliability(days)
     agent_cnt = 15
-    Sampler = CombinedNextReaction{Tuple,Float64}
     physical = IndividualState(agent_cnt, 10)
     included_transitions = [
         StartDay,
@@ -189,7 +187,7 @@ function run_reliability(days)
         included_transitions;
         rng=Xoshiro(2947223),
         observer=trajectory,
-        sampler=Sampler()
+        sampler=NextReactionMethod(), key_type=Tuple
     )
     initializer = function(init_physical, when, rng)
         initialize!(init_physical, rng)

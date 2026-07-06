@@ -14,7 +14,6 @@ module ReliabilityDerivedSim
 using ChronoSim
 using ChronoSim.ObservedState
 using CompetingClocks
-using CompetingClocks: CombinedNextReaction
 import ChronoSim: generators, precondition, enable, reenable, fire!
 using Distributions
 using Random
@@ -157,14 +156,13 @@ end
 
 function run_reliability_derived(days)
     agent_cnt = 15
-    Sampler = CombinedNextReaction{Tuple,Float64}
     physical = IndividualState(agent_cnt, 10)
     included_transitions = [StartDay, EndDay, Break, Repair]
     sim = SimulationFSM(
         physical,
         included_transitions;
         rng=Xoshiro(2947223),
-        sampler=Sampler()
+        sampler=NextReactionMethod(), key_type=Tuple
     )
     initializer = function(init_physical, when, rng)
         initialize!(init_physical, rng)
