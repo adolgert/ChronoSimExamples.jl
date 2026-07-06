@@ -94,7 +94,9 @@ end
 
 ######## Helper functions
 
-get_distance(floor1, floor2) = abs(floor1 - floor2)
+# @fragment so the Quint compiler (Phase 4) can inline the body (`abs` has no Quint
+# stdlib form); behavior is byte-identical to the unmarked helper.
+@fragment get_distance(floor1, floor2) = abs(floor1 - floor2)
 
 # @fragment so preconditions may pass elevator/person state into these helpers; the
 # analysis inlines the registered body (runtime still calls the function unchanged).

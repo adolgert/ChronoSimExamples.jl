@@ -63,6 +63,61 @@ jobs:
           ])
           Pkg.instantiate()
       - uses: julia-actions/julia-runtest@v1
+  # Phase 4: compile the models to Quint and run the toolchain-gated checker tests
+  # (typecheck, `quint run`, bounded Apalache trace validation + the mutation test).
+  # A SEPARATE job — it does NOT gate the `test` job above. Versions are pinned per
+  # ChronoSim.jl's quint_spike/VERSIONS.md.
+  model-check:
+    name: Model check (Quint + Apalache)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: adolgert/ChronoSim.jl
+          ref: dev/verification
+          path: deps/ChronoSim.jl
+      - uses: actions/checkout@v4
+        with:
+          repository: adolgert/CompetingClocks.jl
+          path: deps/CompetingClocks.jl
+      - uses: actions/setup-node@v4          # VERSIONS.md: Node v22.16.0
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4          # VERSIONS.md: Temurin 17.0.19 (sets JAVA_HOME)
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Install pinned Quint
+        run: npm install --prefix quint-tools @informalsystems/quint@0.32.0
+      - uses: actions/cache@v4               # ~/.quint holds apalache-dist-0.56.1
+        with:
+          path: ~/.quint
+          key: apalache-0.56.1
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+      - name: Develop sibling dependencies
+        shell: julia --project=. --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.develop([
+            PackageSpec(path="deps/CompetingClocks.jl"),
+            PackageSpec(path="deps/ChronoSim.jl"),
+          ])
+          Pkg.instantiate()
+      # Deliberately re-runs the FULL suite (not just the quint testsets):
+      # selection machinery isn't worth the maintenance while the whole run fits
+      # the 30-minute timeout; the quint testsets activate via CHRONOSIM_QUINT.
+      - name: Run the model-checking tests
+        run: julia --project=. test/runtests.jl
+        env:
+          CHRONOSIM_QUINT: ${{ github.workspace }}/quint-tools
   docs:
     name: Documentation
     # The docs environment instantiates the path-dev Manifest, which only

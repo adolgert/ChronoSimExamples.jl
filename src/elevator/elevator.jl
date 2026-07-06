@@ -826,43 +826,10 @@ function run_elevator(; policy=ChronoSim.NoPolicy())
     return sim.when
 end
 
-include("elevatortla.jl")
-
-function run_with_trace()
-    person_cnt = 3
-    elevator_cnt = 2
-    floor_cnt = 5
-    minutes = 120.0
-    ClockKey=Tuple
-    Sampler = CombinedNextReaction{ClockKey,Float64}
-    physical = ElevatorSystem(person_cnt, elevator_cnt, floor_cnt)
-    included_transitions = [
-        PickNewDestination,
-        CallElevator,
-        OpenElevatorDoors,
-        EnterElevator,
-        ExitElevator,
-        CloseElevatorDoors,
-        MoveElevator,
-        StopElevator,
-        DispatchElevator,
-    ]
-    @assert length(included_transitions) == 9
-    tla_recorder = TLATraceRecorder()
-    sim = SimulationFSM(
-        physical, included_transitions; sampler=Sampler(), rng=Xoshiro(93472934), observer=tla_recorder
-    )
-    tla_recorder.sim = sim
-    # Stop-condition is called after the next event is chosen but before the
-    # next event is fired. This way you can stop at an end time between events.
-    stop_condition = function (physical, step_idx, event, when)
-        return step_idx > 1
-    end
-    ChronoSim.run(sim, init_physical, stop_condition)
-    # Validate the trace with TLC
-    println("\nValidating trace with TLC...")
-    validate_trace(tla_recorder, person_cnt, elevator_cnt, floor_cnt)
-    return sim.when
-end
+# The bespoke TLA+/TLC trace glue (TLATraceRecorder, run_with_trace) was retired in
+# Phase 4: the generic `ChronoSim.compile_quint` + `validate_trace` path validates the
+# same elevator trajectory class the TLC glue checked (see test/test_quint.jl), and its
+# tla2tools.jar shell-out was never present on CI. The machinery is preserved under
+# `attic/elevatortla.jl`; `Elevator.tla` stays here as provenance documentation.
 
 end
