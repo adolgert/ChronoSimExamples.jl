@@ -5,6 +5,7 @@ include("elevator/elevator_derived.jl")
 include("landspread/landspread.jl")
 include("reliability/reliability.jl")
 include("reliability/reliability_derived.jl")
+include("repairshop/repairshop.jl")
 include("sirvillage/sirvillage.jl")
 include("sirvillage/sirvillage_derived.jl")
 

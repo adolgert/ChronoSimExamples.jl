@@ -54,18 +54,40 @@ end
         land.mark[evt.destination] == 0
 end
 
-function enable(evt::Spread, land, when)
+# This module is written against ChronoSim's θ (parameter) seam, the
+# four-argument form of `enable`: the simulation carries a parameter vector in
+# its `params` field (constructor keyword `params=`), and the engine passes it
+# to `enable` as the third argument. Reading the spread coefficients from θ
+# instead of hard-coding them means an estimator can re-evaluate this same
+# trace at a different θ — including a vector of ForwardDiff duals — through
+# the `params=` keyword of `trace_likelihood`, with no module-global state.
+# θ[1] is the scale coefficient and θ[2] the distance exponent of the Weibull
+# spread clock. Modules that still define the three-argument
+# `enable(evt, physical, when)` keep working: the four-argument default forwards
+# to it (see ReliabilitySim for a deliberate example of that fallback).
+const SPREAD_THETA = [0.1, 1.2]
+
+function enable(evt::Spread, land, θ, when)
     dist = land.distance[evt.source, evt.destination]
-    scale = 0.1 * dist^1.2
+    scale = θ[1] * dist^θ[2]
     return (Weibull(2, scale), when)
 end
 
+# NOTE the two-statement write idiom: the assignment happens as a plain
+# statement and `@obswrite` is applied to the ACCESS, only to record the
+# address. Passing the whole assignment to `@obswrite` looks natural but the
+# macro's assignment form drops the right-hand side (it records the address and
+# evaluates only the left-hand access), so the write never happens and the
+# simulation silently proposes nothing. That bug made this example run
+# zero events until the adoption audit caught it.
 @fire function fire!(evt::Spread, land, when, rng)
-    @obswrite land.mark[evt.destination] = 1
+    land.mark[evt.destination] = 1
+    @obswrite land.mark[evt.destination]
 end
 
 function init_physical!(land, when, rng)
-    @obswrite land.mark[1] = 1
+    land.mark[1] = 1
+    @obswrite land.mark[1]
 end
 
 struct TrajectoryEntry
@@ -86,7 +108,7 @@ function (te::TrajectorySave)(physical, when, event, changed_places)
     push!(te.trajectory, TrajectoryEntry(clock_key(event), when))
 end
 
-function run_landspread(point_cnt)
+function run_landspread(point_cnt; θ=SPREAD_THETA)
     rng = Xoshiro(9437294723)
     land = Landscape(point_cnt, rng)
     trajectory = TrajectorySave()
@@ -95,6 +117,7 @@ function run_landspread(point_cnt)
         [Spread];
         rng = rng,
         observer = trajectory,
+        params = θ,
         )
     stop_condition = function(land, step, event, when)
         return false
@@ -104,7 +127,12 @@ function run_landspread(point_cnt)
 end
 
 
-function landspread_likelihood(point_cnt)
+# Evaluate the recorded trajectory's log-likelihood at an explicit θ. Because θ
+# arrives through the `params=` keyword rather than through anything the model
+# module owns, the same trace can be scored at the θ that generated it, at a
+# perturbed θ, or at a dual-valued θ for automatic differentiation — see the
+# RepairShop module for that workflow taken through ForwardDiff.
+function landspread_likelihood(point_cnt; θ=SPREAD_THETA)
     trajectory_vector = run_landspread(point_cnt)
     event_dict = Dict(:Spread => Spread, :InitializeEvent => ChronoSim.InitializeEvent)
     event_vector = [astuple(te, event_dict) for te in trajectory_vector]
@@ -117,10 +145,14 @@ function landspread_likelihood(point_cnt)
         [Spread];
         sampler = NextReactionMethod(), key_type = Tuple,
         step_likelihood = true,
+        likelihood_eltype = eltype(θ),
         rng = rng
         )
-    how_likely = ChronoSim.trace_likelihood(sim, init_physical!, event_vector).loglikelihood
+    how_likely = ChronoSim.trace_likelihood(
+        sim, init_physical!, event_vector; params=θ
+    ).loglikelihood
     println("logpdf $how_likely")
+    return how_likely
 end
 end  # module LandSpread
 

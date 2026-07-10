@@ -58,6 +58,13 @@ struct StartDay <: SimEvent end
     end
 end
 
+# This module DELIBERATELY keeps the pre-θ-seam three-argument enable
+# signature, `enable(event, physical, when)`. ChronoSim's engine now calls the
+# four-argument θ-seam form, `enable(event, physical, θ, when)`, and its default
+# method forwards to this one, so a model that reads no parameters from θ needs
+# no change. This module (and its ReliabilityDerivedSim twin) is the suite's
+# standing evidence that the fallback works; see LandSpread for the recommended
+# four-argument style.
 function enable(evt::StartDay, physical, when)
     desired_time = floor(when) + 1.0 + physical.start_time
     interval = desired_time - when

@@ -23,6 +23,14 @@ import ChronoSim: precondition, enable, fire!, generators
 
 # DirectionState
 @enum ElevatorDirection Up Down Stationary
+# CompetingClocks 0.4 seeds each clock's random stream from `hash((seed, clock_key))`,
+# and DispatchElevator carries this enum inside its clock key. An enum has no
+# content-based `Base.hash`, so it falls back to `objectid`, which differs between
+# the twin modules that define the "same" enum and is not even stable across julia
+# processes with different compile options -- both reproducibility and the
+# hand-vs-derived trajectory identity break without this method. Hashing by the
+# value's name makes the clock key hash content-based and module-independent.
+Base.hash(x::ElevatorDirection, h::UInt) = hash(Symbol(x), h)
 
 @keyedby Person Int64 begin
     location::Int64  # a floor, 0 if on elevator.

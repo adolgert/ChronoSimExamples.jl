@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "73431148b77ccafeada440f1f900f2a86cea8552"
+project_hash = "9b863538a71146709706a74d11fb9528bdd07277"
 
 [[deps.Accessors]]
 deps = ["CompositionsBase", "ConstructionBase", "Dates", "InverseFunctions", "MacroTools"]
@@ -55,11 +55,21 @@ git-tree-sha1 = "99ee296f88c12485402e37c2fd025f95ae097637"
 uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
 version = "0.2.9"
 
+[[deps.CommonSubexpressions]]
+deps = ["MacroTools"]
+git-tree-sha1 = "cda2cfaebb4be89c9084adaca7dd7333369715c5"
+uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
+version = "0.3.1"
+
 [[deps.CompetingClocks]]
 deps = ["DataStructures", "Distributions", "Logging", "Random"]
 path = "../CompetingClocks.jl"
 uuid = "5bb9b785-358c-4fee-af0f-b94a146244a8"
-version = "0.3.0"
+version = "0.4.0"
+weakdeps = ["ForwardDiff"]
+
+    [deps.CompetingClocks.extensions]
+    CompetingClocksForwardDiffExt = "ForwardDiff"
 
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -106,6 +116,18 @@ deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
 
+[[deps.DiffResults]]
+deps = ["StaticArraysCore"]
+git-tree-sha1 = "782dd5f4561f5d267313f23853baaaa4c52ea621"
+uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
+version = "1.1.0"
+
+[[deps.DiffRules]]
+deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "79a2aca180a85c690c58a020d47b426954b590f8"
+uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+version = "1.16.0"
+
 [[deps.Distributions]]
 deps = ["AliasTables", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "Roots", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns"]
 git-tree-sha1 = "cd3c5ac74cd3923c8945c6a81518c46abd0e73a3"
@@ -146,6 +168,18 @@ version = "1.16.0"
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
     Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[[deps.ForwardDiff]]
+deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
+git-tree-sha1 = "2c5d0b0e12088cde2cf84afb2784415b1ea3dfee"
+uuid = "f6369f11-7733-5829-9624-2563aa707210"
+version = "1.4.1"
+
+    [deps.ForwardDiff.extensions]
+    ForwardDiffStaticArraysExt = "StaticArrays"
+
+    [deps.ForwardDiff.weakdeps]
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.Gamma]]
 git-tree-sha1 = "86f86b6168a016ed88e4ae4e64577b98c3b59e8e"
@@ -221,6 +255,12 @@ deps = ["DataAPI"]
 git-tree-sha1 = "ec4f7fbeab05d7747bdf98eb74d130a2a2ed298d"
 uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
 version = "1.2.0"
+
+[[deps.NaNMath]]
+deps = ["OpenLibm_jll"]
+git-tree-sha1 = "dbd2e8cd2c1c27f0b584f6661b4309609c5a685e"
+uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
+version = "1.1.4"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
@@ -355,6 +395,11 @@ version = "2.8.0"
 
     [deps.SpecialFunctions.weakdeps]
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+
+[[deps.StaticArraysCore]]
+git-tree-sha1 = "6ab403037779dae8c514bad259f32a447262455a"
+uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
+version = "1.4.4"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra"]

@@ -5,6 +5,8 @@ continuous_integration() = get(ENV, "CI", "false") == "true"
 
 include("test_elevator.jl")
 include("test_reliability.jl")
+include("test_repairshop.jl")
+include("test_landspread.jl")
 include("test_sirvillage.jl")
 include("test_differential.jl")
 include("test_invariants.jl")
