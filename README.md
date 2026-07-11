@@ -41,6 +41,18 @@ CompetingClocks 0.4, and exercise its new capabilities:
   ForwardDiff — the full record → check → differentiate workflow, tested
   against a hand-derived analytic score in
   [test/test_repairshop.jl](test/test_repairshop.jl).
+* **The gradient-estimator family.** The companion
+  [repair-shop gradients](src/repairshop/repairshop_gradients.jl) example runs
+  ClockGradients' whole family on the same law against one closed-form oracle:
+  the score/IPA pairing on a pure model (the pairing flags that the pathwise
+  estimate of a terminal count is identically zero), the branching estimator
+  driven through the live ChronoSim simulation, and smoothed perturbation
+  analysis (SPA) with the hand-written **pure model twin** the estimator
+  audits at every step. On this model SPA's criticality gate proves every
+  event-order swap harmless — independent machines commute — so it spawns no
+  clones and the whole derivative flows through its horizon boundary term.
+  Tested in
+  [test/test_repairshop_gradients.jl](test/test_repairshop_gradients.jl).
 * **Master-seed, per-clock randomness.** Every random stream derives from one
   seed, keyed by clock identity, so an event's draws do not depend on how other
   events interleave. The elevator model documents the one sharp edge: a clock

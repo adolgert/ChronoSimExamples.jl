@@ -5,6 +5,7 @@ authors = ["Andrew Dolgert <github@dolgert.com>"]
 
 [deps]
 ChronoSim = "3d4a2042-d4c0-4032-96bb-6b9d4a3cae87"
+ClockGradients = "4ce9755b-dddc-4f69-a7df-9a3441b90f10"
 CompetingClocks = "5bb9b785-358c-4fee-af0f-b94a146244a8"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"

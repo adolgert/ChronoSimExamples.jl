@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "9b863538a71146709706a74d11fb9528bdd07277"
+project_hash = "76457c25f864c3c20889cd078881899716378e69"
 
 [[deps.Accessors]]
 deps = ["CompositionsBase", "ConstructionBase", "Dates", "InverseFunctions", "MacroTools"]
@@ -45,10 +45,20 @@ uuid = "3d4a2042-d4c0-4032-96bb-6b9d4a3cae87"
 version = "0.1.0-DEV"
 
 [[deps.ChronoSimExamples]]
-deps = ["ChronoSim", "CompetingClocks", "Distributions", "Logging", "PDMats", "Random"]
+deps = ["ChronoSim", "ClockGradients", "CompetingClocks", "Distributions", "ForwardDiff", "Logging", "PDMats", "Random"]
 path = "."
 uuid = "1bc6675e-297e-45c4-9a4f-4c2ceebb3e92"
 version = "1.0.0-DEV"
+
+[[deps.ClockGradients]]
+deps = ["CompetingClocks", "Distributions", "ForwardDiff", "Random", "Statistics"]
+path = "../ClockGradients.jl"
+uuid = "4ce9755b-dddc-4f69-a7df-9a3441b90f10"
+version = "0.1.0-DEV"
+weakdeps = ["ChronoSim"]
+
+    [deps.ClockGradients.extensions]
+    ClockGradientsChronoSimExt = "ChronoSim"
 
 [[deps.CommonSolve]]
 git-tree-sha1 = "99ee296f88c12485402e37c2fd025f95ae097637"
@@ -65,7 +75,7 @@ version = "0.3.1"
 deps = ["DataStructures", "Distributions", "Logging", "Random"]
 path = "../CompetingClocks.jl"
 uuid = "5bb9b785-358c-4fee-af0f-b94a146244a8"
-version = "0.4.0"
+version = "0.4.1"
 weakdeps = ["ForwardDiff"]
 
     [deps.CompetingClocks.extensions]
