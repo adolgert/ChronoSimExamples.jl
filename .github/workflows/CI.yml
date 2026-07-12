@@ -26,42 +26,24 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          # The Manifest tracks working-tree checkouts of ChronoSim and
-          # CompetingClocks resolved under current stable; 'pre' adds noise
-          # without guarding anything the dev branches promise.
+          # The seeded statistical tests are calibrated to a released RNG
+          # stream; 'pre' adds noise without guarding anything the dev branches
+          # promise.
           - '1'
         os:
           - ubuntu-latest
         arch:
           - x64
     steps:
+      # ChronoSim, ClockGradients, and CompetingClocks resolve from the
+      # [sources] git-URL entries in Project.toml, so a plain checkout builds.
       - uses: actions/checkout@v6
-      # The Manifest points at sibling working-tree checkouts
-      # (/home/adolgert/dev/...), which do not exist on a runner. Check the
-      # siblings out and re-develop them by path before building.
-      - uses: actions/checkout@v6
-        with:
-          repository: adolgert/ChronoSim.jl
-          ref: main
-          path: deps/ChronoSim.jl
-      - uses: actions/checkout@v6
-        with:
-          repository: adolgert/CompetingClocks.jl
-          path: deps/CompetingClocks.jl
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - name: Develop sibling dependencies
-        shell: julia --project=. --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.develop([
-            PackageSpec(path="deps/CompetingClocks.jl"),
-            PackageSpec(path="deps/ChronoSim.jl"),
-          ])
-          Pkg.instantiate()
+      - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
   # Phase 4: compile the models to Quint and run the toolchain-gated checker tests
   # (typecheck, `quint run`, bounded Apalache trace validation + the mutation test).
@@ -76,15 +58,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/checkout@v6
-        with:
-          repository: adolgert/ChronoSim.jl
-          ref: main
-          path: deps/ChronoSim.jl
-      - uses: actions/checkout@v6
-        with:
-          repository: adolgert/CompetingClocks.jl
-          path: deps/CompetingClocks.jl
       - uses: actions/setup-node@v4          # VERSIONS.md: Node v22.16.0
         with:
           node-version: '22'
@@ -102,15 +75,7 @@ jobs:
         with:
           version: '1'
       - uses: julia-actions/cache@v2
-      - name: Develop sibling dependencies
-        shell: julia --project=. --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.develop([
-            PackageSpec(path="deps/CompetingClocks.jl"),
-            PackageSpec(path="deps/ChronoSim.jl"),
-          ])
-          Pkg.instantiate()
+      - uses: julia-actions/julia-buildpkg@v1
       # Deliberately re-runs the FULL suite (not just the quint testsets):
       # selection machinery isn't worth the maintenance while the whole run fits
       # the 30-minute timeout; the quint testsets activate via CHRONOSIM_QUINT.
@@ -120,10 +85,9 @@ jobs:
           CHRONOSIM_QUINT: ${{ github.workspace }}/quint-tools
   docs:
     name: Documentation
-    # ChronoSim/CompetingClocks are unregistered path deps, so — like the test
-    # job — the siblings are checked out and re-developed by path. Both the root
-    # project (julia-buildpkg) and the docs project (docdeploy + doctests) need
-    # them, so develop into each. Runs on main only, where DOCUMENTER_KEY exists.
+    # The unregistered deps resolve from the [sources] git-URL entries in the
+    # root and docs Project.toml files, so both environments build from a plain
+    # checkout. Runs on main only, where DOCUMENTER_KEY exists.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -132,35 +96,14 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/checkout@v6
-        with:
-          repository: adolgert/ChronoSim.jl
-          ref: main
-          path: deps/ChronoSim.jl
-      - uses: actions/checkout@v6
-        with:
-          repository: adolgert/CompetingClocks.jl
-          path: deps/CompetingClocks.jl
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
       - uses: julia-actions/cache@v2
-      - name: Develop sibling dependencies (root + docs environments)
-        shell: julia --color=yes {0}
+      - name: Instantiate the docs environment
+        shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
-          siblings = [
-              PackageSpec(path="deps/CompetingClocks.jl"),
-              PackageSpec(path="deps/ChronoSim.jl"),
-          ]
-          # Root project: julia-buildpkg instantiates it.
-          Pkg.activate(".")
-          Pkg.develop(siblings)
-          # Docs project depends on ChronoSimExamples (unregistered), so develop
-          # it together with the siblings in one call — otherwise resolving the
-          # siblings alone fails on the not-yet-developed package.
-          Pkg.activate("docs")
-          Pkg.develop(vcat(siblings, [PackageSpec(path=".")]))
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
