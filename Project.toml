@@ -13,6 +13,13 @@ Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
+# ChronoSim, ClockGradients, and the unregistered CompetingClocks 0.4 are not in
+# a registry; track their public repos so a plain checkout resolves everywhere.
+[sources]
+ChronoSim = {url = "https://github.com/adolgert/ChronoSim.jl.git"}
+ClockGradients = {url = "https://github.com/adolgert/ClockGradients.jl.git"}
+CompetingClocks = {url = "https://github.com/adolgert/CompetingClocks.jl.git"}
+
 [compat]
 CompetingClocks = "0.4"
 Distributions = "0.25.120"
