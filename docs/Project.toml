@@ -1,5 +1,8 @@
 [deps]
+ChronoSim = "3d4a2042-d4c0-4032-96bb-6b9d4a3cae87"
 ChronoSimExamples = "1bc6675e-297e-45c4-9a4f-4c2ceebb3e92"
+ClockGradients = "4ce9755b-dddc-4f69-a7df-9a3441b90f10"
+CompetingClocks = "5bb9b785-358c-4fee-af0f-b94a146244a8"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 # ChronoSimExamples is this repo; its unregistered dependencies track their

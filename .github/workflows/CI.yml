@@ -87,8 +87,9 @@ jobs:
     name: Documentation
     # The unregistered deps resolve from the [sources] git-URL entries in the
     # root and docs Project.toml files, so both environments build from a plain
-    # checkout. Runs on main only, where DOCUMENTER_KEY exists.
-    if: github.ref == 'refs/heads/main'
+    # checkout. Runs on every push and pull_request so the docs build (makedocs
+    # + doctests) is validated on PRs; deploydocs only pushes on main/tags, where
+    # DOCUMENTER_KEY exists, so pull_request runs build without deploying.
     runs-on: ubuntu-latest
     permissions:
       actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
