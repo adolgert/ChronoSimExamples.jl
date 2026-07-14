@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-node@v4          # VERSIONS.md: Node v22.16.0
         with:
           node-version: '22'
-      - uses: actions/setup-java@v4          # VERSIONS.md: Temurin 17.0.19 (sets JAVA_HOME)
+      - uses: actions/setup-java@v5          # VERSIONS.md: Temurin 17.0.19 (sets JAVA_HOME)
         with:
           distribution: 'temurin'
           java-version: '17'
