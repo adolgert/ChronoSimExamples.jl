@@ -37,7 +37,7 @@ jobs:
     steps:
       # ChronoSim, ClockGradients, and CompetingClocks resolve from the
       # [sources] git-URL entries in Project.toml, so a plain checkout builds.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
@@ -57,7 +57,7 @@ jobs:
       actions: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6          # VERSIONS.md: Node v22.16.0
         with:
           node-version: '22'
@@ -96,7 +96,7 @@ jobs:
       contents: write
       statuses: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
