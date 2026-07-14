@@ -73,6 +73,10 @@ repair_shop_score(θ, record; machine_cnt=3) =
     ForwardDiff.gradient(p -> repair_shop_loglik(p, record; machine_cnt), θ)
 ```
 
+![Trace log-likelihood versus breakdown rate with the ForwardDiff tangent](../../assets/figures/repairshop/repairshop_differentiability.png)
+
+*One record from `record_repair_shop([0.3, 1.0])` is fixed; sweeping the breakdown rate θ₁ traces the trace log-likelihood, and the dashed line is the tangent whose slope is `repair_shop_score(θ)[1]` — ForwardDiff recovers the exact slope of the curve.*
+
 The trace is *fixed*; only the evaluation parameters vary. That makes the score a
 deterministic function of `(θ, record)` — the same property landspread
 demonstrates, applied here to a differentiable gradient.

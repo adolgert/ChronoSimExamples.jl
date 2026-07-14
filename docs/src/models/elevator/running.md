@@ -75,7 +75,19 @@ end
 ```
 
 An observer is the intended way to pull data out of a run — nothing else needs
-to know the event types.
+to know the event types. Capturing the car's floor, its door state, and the
+rider's position at every firing yields the trajectory of a single 120-minute
+run:
+
+![Elevator car floor over a 120-minute run](../../assets/figures/elevator/trajectory.png)
+*The step line is the single car's floor; diamonds mark door openings, triangles mark the rider boarding and exiting. The rider's floor (orange) tracks the car while riding and rests on a floor while idle.*
+
+Counting each firing by its event type over the same run shows how the work is
+distributed: doors open and close most often, movement and dispatch next, and
+the rider's own decisions least.
+
+![How often each event fired during the run](../../assets/figures/elevator/event_counts.png)
+*Event firings tallied by `clock_key(event)[1]` across the 120-minute run.*
 
 ## Turning on invariant checking
 

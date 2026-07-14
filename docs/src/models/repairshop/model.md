@@ -54,6 +54,10 @@ end
 Two events, each keyed by a machine index. Both take the four-argument θ-seam
 form of `enable`, building their exponential clock from the caller-supplied `θ`:
 
+![One machine as a two-state chain](../../assets/figures/repairshop/repairshop_states.png)
+
+*Each machine is an independent two-state chain: `running` breaks down at rate θ₁ and `down` is repaired at rate θ₂.*
+
 **`Breakdown(machine)`** — enabled while the machine is `running`:
 
 ```julia

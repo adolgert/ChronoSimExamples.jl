@@ -32,6 +32,18 @@ using ChronoSimExamples.SIRVillage
 SIRVillage.run_sirvillage()
 ```
 
+Running the larger 30-person, 15-day village from the test and counting S/I/R
+states after every event gives the epidemic curve below. The infection sweeps the
+village in the first day, recovery builds up an immune pool, and waning (`Reset`)
+plus new strains keep infections circulating; the lower panel tracks the
+cumulative number of strains as `Mutate` fires.
+
+![S, I, and R counts and cumulative strain count over a 15-day run](../../assets/figures/sirvillage/epidemic.png)
+
+*A 30-person, 10-location, 15-day run (`Xoshiro(2938423)`): Susceptible,
+Infectious, and Recovered counts over time, with the cumulative strain count
+below.*
+
 The derived twin has a matching `run_sirvillage_derived()` entry point (30 people,
 10 locations, 30 days), with no observer or policy attached.
 

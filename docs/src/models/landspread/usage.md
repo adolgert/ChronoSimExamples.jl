@@ -31,6 +31,12 @@ using ChronoSimExamples.LandSpread
 traj = LandSpread.run_landspread(10)
 ```
 
+![Saturation of a 40-point landscape](../../assets/figures/landspread/saturation.png)
+
+*Cumulative occupied points versus time for a single 40-point run. Because the
+process is monotone, the step curve only climbs, and it stops the moment the
+last point is occupied.*
+
 ## Scoring a trajectory at a parameter value
 
 `landspread_likelihood(point_cnt; θ=SPREAD_THETA)` records a trajectory and then
@@ -62,6 +68,13 @@ Two details make the θ seam work here:
 LandSpread.landspread_likelihood(10)                 # score at SPREAD_THETA
 LandSpread.landspread_likelihood(10; θ=[0.2, 1.0])   # score the same trace elsewhere
 ```
+
+![Trace log-likelihood swept over θ](../../assets/figures/landspread/theta_seam.png)
+
+*Scoring one recorded trace at a grid of parameter values. Sweeping either the
+scale coefficient θ[1] or the distance exponent θ[2] traces a smooth
+log-likelihood curve; the dashed line marks the generating `SPREAD_THETA`. This
+is the θ seam in one picture — generate once, score at many θ.*
 
 ## The tests
 

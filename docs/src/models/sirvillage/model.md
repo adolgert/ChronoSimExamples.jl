@@ -41,6 +41,11 @@ Recovered — and because a `Reset` event returns recovered people to susceptibl
 immunity wanes and the model is SIRS rather than plain SIR. There is no latent
 compartment, so it is not SEIR.
 
+![SIRS compartment cycle with the driving events on the arrows](../../assets/figures/sirvillage/compartments.png)
+
+*The three disease states and the events that move a person between them; `Mutate`
+acts within Infectious, giving birth to a child strain.*
+
 Every individual is tracked separately with its own parameters: a robustness draw
 that governs susceptibility and recovery speed, a personal subset of locations it
 visits, and personal dwell and exit parameters. The pathogen is a growing set of
@@ -142,6 +147,12 @@ child strain's infectivity and virulence from a bivariate lognormal centered on
 the parent's values, creates a new `Strain` with `parent` set to the current
 strain, assigns it `next_strain_id`, and switches the carrier to the new child.
 This is the runtime "birth" that requires the dict-keyed `strains`.
+
+![Strain phylogeny built from a 30-person, 15-day run](../../assets/figures/sirvillage/phylogeny.png)
+
+*The `parent` field of each `Strain` forms a tree rooted at the founding strain
+(id 1). Node color is infectivity, node size is virulence; both drift from the
+parent's values through the bivariate-lognormal mutation kernel.*
 
 **`InitEvent()`** — the bootstrap. It places each actor at a random haunt, infects
 the first ten percent of the population with the founding strain, and seeds a few

@@ -64,10 +64,21 @@ The constructor `IndividualState(actor_cnt, crew_size)` builds every machine as
 `LogUniform(0.8, 0.99)` for finishing the day, `LogNormal(1.5, 0.4)` for
 failure, and `Weibull(1.0, 2.0)` for repair.
 
+![Clock distributions](../../assets/figures/reliability/clocks.png)
+
+*The three clocks live on very different timescales: the end-of-day
+`LogUniform` is a narrow spike just under one day, while failure and repair
+spread across several days.*
+
 ## Events
 
 Four events drive the model. `StartDay` has no argument; the others carry a
 machine index.
+
+![Machine state machine](../../assets/figures/reliability/state_machine.png)
+
+*A single machine cycles through three states; each arrow is the event that
+drives the transition.*
 
 **`StartDay`** — always enabled, it fires once per day at the workday start. Its
 `enable` computes a deterministic delay to the next 8:00 boundary and returns a

@@ -133,6 +133,9 @@ event), a `precondition` (whether it may fire), and `fire!` (its effect).
 | `StopElevator(elevator)` | doors closed at a boundary floor with no reason to open | sets the car stationary |
 | `DispatchElevator(floor, direction)` | an active call with a stationary or approaching car available | steers the closest suitable car toward the call |
 
+![Elevator car service cycle and rider lifecycle](../../assets/figures/elevator/lifecycle.png)
+*The nine events split into two coupled loops: a car cycles through dispatch, motion, and door handling, while a rider picks a destination, calls, boards, rides, and exits.*
+
 Three of these preconditions are worth noting because they show ChronoSim's more
 advanced features:
 

@@ -53,6 +53,10 @@ The `repair_shop_gradients_demo` runs all four (oracle plus three estimators) an
 prints each against the oracle. Each estimator illustrates a different member of
 the family and a different lesson.
 
+![Estimator family compared to the closed-form oracle, per parameter component](../../assets/figures/repairshop/repairshop_estimators.png)
+
+*Per parameter component, the score (pairing), branching, and SPA estimates with ±1 standard-error bars bracket the closed-form oracle (diamond); nreps = 800, horizon = 8.0, θ = [0.3, 1.0]. SPA's wider bars reflect the caveat below — it has no variance advantage on this order-insensitive functional.*
+
 **Score / IPA pairing** — `repair_shop_pairing`. Runs the score-function and
 pathwise (IPA) estimators together on the pure model. For a terminal down-count,
 the pathwise estimate is identically zero — the count is a frozen discrete read

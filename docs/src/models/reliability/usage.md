@@ -32,6 +32,13 @@ using ChronoSimExamples.ReliabilitySim
 ReliabilitySim.run_reliability(10.0)   # ten simulated days
 ```
 
+![Fleet state occupancy over ten days](../../assets/figures/reliability/occupancy.png)
+
+*Reconstructing the run with a state-counting observer shows the daily rhythm:
+each morning `StartDay` lifts the working count to the crew cap of 10, machines
+trickle back to `ready` as they finish, and a growing tail sits `broken`
+awaiting repair.*
+
 The derived twin has a matching entry point, `run_reliability_derived(days)`,
 which is identical except that it attaches no observer.
 

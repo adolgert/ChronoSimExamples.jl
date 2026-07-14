@@ -7,6 +7,12 @@ canonical demonstration of the **θ (parameter) seam** — the four-argument for
 `enable` that lets one recorded trajectory be re-scored at different parameter
 values.
 
+![Spread cascade across a 40-point landscape](../../assets/figures/landspread/spread_map.png)
+
+*The signature figure: points placed on the unit square, colored by the time
+each was infected, with an arrow from source to destination for every spread.
+The star marks the seed (point 1), and the cascade fans out from it.*
+
 ## Where it comes from
 
 The header describes the process directly:
