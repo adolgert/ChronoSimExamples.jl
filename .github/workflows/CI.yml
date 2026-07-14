@@ -38,7 +38,7 @@ jobs:
       # ChronoSim, ClockGradients, and CompetingClocks resolve from the
       # [sources] git-URL entries in Project.toml, so a plain checkout builds.
       - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
@@ -71,7 +71,7 @@ jobs:
         with:
           path: ~/.quint
           key: apalache-0.56.1
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - uses: julia-actions/cache@v2
@@ -97,7 +97,7 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - uses: julia-actions/cache@v2
