@@ -14,6 +14,30 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Elevator" => [
+            "The Model" => "models/elevator/model.md",
+            "Running It" => "models/elevator/running.md",
+            "Debugging Tools" => "models/elevator/debugging.md",
+        ],
+        "Reliability" => [
+            "The Model" => "models/reliability/model.md",
+            "Running It" => "models/reliability/usage.md",
+        ],
+        "Repair Shop" => [
+            "The Model" => "models/repairshop/model.md",
+            "The Likelihood Workflow" => "models/repairshop/likelihood.md",
+            "Gradient Estimators" => "models/repairshop/gradients.md",
+        ],
+        "Landspread" => [
+            "The Model" => "models/landspread/model.md",
+            "Running It" => "models/landspread/usage.md",
+        ],
+        "SIR Village" => [
+            "The Model" => "models/sirvillage/model.md",
+            "Running It" => "models/sirvillage/usage.md",
+            "Characterizing Travel" => "dwell.md",
+        ],
+        "Other Simulations" => "possible.md",
     ],
     # The example models live in submodules (ElevatorExample, SIRVillage, ...)
     # whose per-event docstrings are not meant to be enumerated in the manual;
