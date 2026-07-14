@@ -67,7 +67,7 @@ jobs:
           java-version: '17'
       - name: Install pinned Quint
         run: npm install --prefix quint-tools @informalsystems/quint@0.32.0
-      - uses: actions/cache@v4               # ~/.quint holds apalache-dist-0.56.1
+      - uses: actions/cache@v6               # ~/.quint holds apalache-dist-0.56.1
         with:
           path: ~/.quint
           key: apalache-0.56.1
