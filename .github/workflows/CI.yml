@@ -42,7 +42,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
   # Phase 4: compile the models to Quint and run the toolchain-gated checker tests
@@ -74,7 +74,7 @@ jobs:
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       # Deliberately re-runs the FULL suite (not just the quint testsets):
       # selection machinery isn't worth the maintenance while the whole run fits
@@ -100,7 +100,7 @@ jobs:
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Instantiate the docs environment
         shell: julia --project=docs --color=yes {0}
         run: |
